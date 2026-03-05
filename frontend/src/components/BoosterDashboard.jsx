@@ -94,7 +94,7 @@ export default function BoosterDashboard({ data, loading }) {
           )}
         </div>
         <div className="filter-group">
-          {["", "active", "inactive", "lost", "retired"].map((s) => (
+          {["", "active", "destroyed", "retired", "unknown"].map((s) => (
             <button
               key={s}
               className={`filter-btn ${status === s ? "active" : ""}`}
