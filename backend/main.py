@@ -121,11 +121,6 @@ def _pct(part: int, total: int) -> Optional[float]:
     return round((part / total) * 100, 1)
 
 
-def _slugify(value: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", (value or "").lower()).strip("-")
-    return slug
-
-
 def _extract_meta_description(html: str) -> Optional[str]:
     if not html:
         return None
@@ -147,6 +142,61 @@ def _fetch_launch_page_summary(url: str) -> Optional[str]:
         return _extract_meta_description(resp.text)
     except requests.RequestException:
         return None
+
+
+def _parse_date_utc(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def _days_since(value: Optional[datetime]) -> Optional[int]:
+    if not value:
+        return None
+    now = datetime.now(timezone.utc)
+    return max((now - value).days, 0)
+
+
+def _fetch_spacex_launches_listing(limit: int = 10) -> list[dict]:
+    url = "https://www.spacex.com/launches/"
+    try:
+        resp = requests.get(url, timeout=12)
+        if resp.status_code != 200:
+            return []
+        hrefs = re.findall(r'href=["\'](/launches/[^"\']+)["\']', resp.text, flags=re.IGNORECASE)
+        items = []
+        seen = set()
+        for href in hrefs:
+            if href in {"/launches", "/launches/"}:
+                continue
+            normalized = href.split("?")[0]
+            if normalized.endswith("/"):
+                normalized = normalized[:-1]
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            full_url = f"https://www.spacex.com{normalized}/"
+            slug = normalized.rsplit("/", 1)[-1]
+            title = slug.replace("-", " ").title()
+            items.append(
+                {
+                    "name": title,
+                    "date_utc": None,
+                    "success": None,
+                    "rocket_name": None,
+                    "site_url": full_url,
+                    "site_summary": _fetch_launch_page_summary(full_url),
+                    "source": "spacex.com/launches",
+                }
+            )
+            if len(items) >= limit:
+                break
+        return items
+    except requests.RequestException:
+        return []
 
 
 def _fetch_falcon9_vehicle_page_stats() -> Optional[dict]:
@@ -207,6 +257,7 @@ def _fetch_spacex_rocket_stats():
     rockets = rockets_resp.json()
     launches = launches_resp.json().get("docs", [])
     by_rocket = {r["id"]: r for r in rockets}
+    latest_api_launch_dt = _parse_date_utc((launches[0] or {}).get("date_utc")) if launches else None
 
     rocket_stats = {
         r["id"]: {
@@ -234,7 +285,7 @@ def _fetch_spacex_rocket_stats():
     total_core_flights = 0
     total_reused_core_flights = 0
     total_successful = 0
-    recent_launches = []
+    recent_launches_fallback = []
     falcon9_rocket_id = next(
         (r["id"] for r in rockets if str(r.get("name", "")).lower() == "falcon 9"),
         None,
@@ -287,16 +338,15 @@ def _fetch_spacex_rocket_stats():
 
     for launch in launches[:10]:
         rocket_name = by_rocket.get(launch.get("rocket"), {}).get("name")
-        slug = _slugify(launch.get("name", ""))
-        site_url = f"https://www.spacex.com/launches/{slug}/index.html" if slug else None
-        recent_launches.append(
+        recent_launches_fallback.append(
             {
                 "name": launch.get("name"),
                 "date_utc": launch.get("date_utc"),
                 "success": launch.get("success"),
                 "rocket_name": rocket_name,
-                "site_url": site_url,
-                "site_summary": _fetch_launch_page_summary(site_url) if site_url else None,
+                "site_url": None,
+                "site_summary": None,
+                "source": "api.spacexdata.com",
             }
         )
 
@@ -340,6 +390,10 @@ def _fetch_spacex_rocket_stats():
         if f9_official and f9_official.get("total_reflights") is not None
         else f9_total_reflights_calc
     )
+    recent_launches = _fetch_spacex_launches_listing(limit=10)
+    recent_launches_source = "spacex.com/launches" if recent_launches else "api.spacexdata.com"
+    if not recent_launches:
+        recent_launches = recent_launches_fallback
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -377,6 +431,18 @@ def _fetch_spacex_rocket_stats():
             },
             "source": f9_official
             or {"source_type": "api.spacexdata.com", "source_url": "https://api.spacexdata.com/v4"},
+        },
+        "data_sources": {
+            "launches_list": {
+                "source": recent_launches_source,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "rockets_api": {
+                "source": "api.spacexdata.com",
+                "latest_launch_date_utc": latest_api_launch_dt.isoformat() if latest_api_launch_dt else None,
+                "days_since_latest_launch": _days_since(latest_api_launch_dt),
+                "is_stale": (_days_since(latest_api_launch_dt) or 0) > 120 if latest_api_launch_dt else True,
+            },
         },
         "recent_launches": recent_launches,
         "rockets": rocket_list,
@@ -425,6 +491,7 @@ def _fetch_spacex_booster_intel():
     ships = ships_resp.json()
     launches = launches_resp.json().get("docs", [])
     rockets = rockets_resp.json()
+    latest_api_launch_dt = _parse_date_utc((launches[0] or {}).get("date_utc")) if launches else None
 
     by_core = {c["id"]: c for c in cores}
     by_rocket = {r["id"]: r for r in rockets}
@@ -596,6 +663,14 @@ def _fetch_spacex_booster_intel():
         "boosters": boosters,
         "landpads": landpads_out,
         "droneships": droneships,
+        "data_sources": {
+            "boosters_api": {
+                "source": "api.spacexdata.com",
+                "latest_launch_date_utc": latest_api_launch_dt.isoformat() if latest_api_launch_dt else None,
+                "days_since_latest_launch": _days_since(latest_api_launch_dt),
+                "is_stale": (_days_since(latest_api_launch_dt) or 0) > 120 if latest_api_launch_dt else True,
+            }
+        },
     }
 
 

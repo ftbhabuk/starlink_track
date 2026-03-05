@@ -13,6 +13,9 @@ export default function RocketStats({ data, loading }) {
   const overall = data.overall || {};
   const rockets = data.rockets || [];
   const sourceType = data?.falcon9?.source?.source_type || "api";
+  const launchesListSource = data?.data_sources?.launches_list?.source || "unknown";
+  const rocketsApi = data?.data_sources?.rockets_api;
+  const rocketsStale = Boolean(rocketsApi?.is_stale);
 
   const cards = [
     { label: "Completed Missions (F9)", value: overall.total_launches?.toLocaleString() },
@@ -25,7 +28,12 @@ export default function RocketStats({ data, loading }) {
     <section className="rocket-section">
       <div className="section-head">
         <h2>SpaceX Rocket Intelligence</h2>
-        <span className="mono dim">Generated: {dateOnly(data.generated_at)} · Source: {sourceType}</span>
+        <span className="mono dim">Generated: {dateOnly(data.generated_at)} · F9 source: {sourceType}</span>
+      </div>
+      <div className={`source-note ${rocketsStale ? "warn" : ""}`}>
+        <span className="mono">
+          Launch list source: {launchesListSource} · API latest launch: {dateOnly(rocketsApi?.latest_launch_date_utc)} ({rocketsApi?.days_since_latest_launch ?? "?"} days ago)
+        </span>
       </div>
 
       <div className="stats-bar">

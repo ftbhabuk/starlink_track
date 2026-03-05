@@ -22,6 +22,7 @@ export default function HomeLanding({
   const retired = boosterIntel?.overall?.retired_boosters;
   const activeStarlink = stats?.active;
   const recent = rocketStats?.recent_launches || [];
+  const launchesSource = rocketStats?.data_sources?.launches_list?.source || "unknown";
 
   return (
     <section className="home-landing">
@@ -73,6 +74,9 @@ export default function HomeLanding({
       <div className="infra-grid home-grid">
         <section className="infra-panel">
           <h3>Latest Launches</h3>
+          <div className="source-note">
+            <span className="mono">Source: {launchesSource}</span>
+          </div>
           <div className="infra-list">
             {recent.slice(0, 6).map((l) => (
               <div key={`${l.name}-${l.date_utc}`} className="infra-item">

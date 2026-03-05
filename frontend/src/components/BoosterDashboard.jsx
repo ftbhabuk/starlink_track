@@ -19,6 +19,8 @@ export default function BoosterDashboard({ data, loading }) {
 
   const boosters = data?.boosters || [];
   const overall = data?.overall || {};
+  const boostersApi = data?.data_sources?.boosters_api;
+  const boostersStale = Boolean(boostersApi?.is_stale);
 
   const filtered = useMemo(() => {
     return boosters.filter((b) => {
@@ -53,6 +55,11 @@ export default function BoosterDashboard({ data, loading }) {
       <div className="section-head">
         <h2>Booster Intelligence</h2>
         <span className="mono dim">Updated: {dateOnly(data.generated_at)}</span>
+      </div>
+      <div className={`source-note ${boostersStale ? "warn" : ""}`}>
+        <span className="mono">
+          Source: api.spacexdata.com · Latest launch in feed: {dateOnly(boostersApi?.latest_launch_date_utc)} ({boostersApi?.days_since_latest_launch ?? "?"} days ago)
+        </span>
       </div>
 
       <div className="stats-bar">

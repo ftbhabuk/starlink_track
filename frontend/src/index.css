@@ -363,8 +363,20 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
   background: rgba(255,255,255,0.01);
 }
 .home-grid { margin-top: 12px; }
-.home-summary { color: #a9c0da; font-size: 12px; margin-top: 6px; }
-.home-link { color: #c8d8ec; display: inline-block; margin-top: 8px; text-decoration: underline; }
+.home-summary { color: #bdbdbd; font-size: 12px; margin-top: 6px; }
+.home-link { color: #f2f2f2; display: inline-block; margin-top: 8px; text-decoration: underline; }
+.source-note {
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.01);
+  border-radius: 3px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  color: var(--text-dim);
+}
+.source-note.warn {
+  border-color: rgba(255,255,255,0.22);
+  color: #f2f2f2;
+}
 
 /* === ENV FILE NOTE (dev only) === */
 @media (max-width: 640px) {
