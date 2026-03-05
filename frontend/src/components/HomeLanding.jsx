@@ -80,6 +80,9 @@ export default function HomeLanding({
           <div className="infra-list">
             {recent.slice(0, 6).map((l) => (
               <div key={`${l.name}-${l.date_utc}`} className="infra-item">
+                {l.image_url && (
+                  <img className="launch-thumb" src={l.image_url} alt={l.name || "Launch"} loading="lazy" />
+                )}
                 <div className="name-cell">{l.name}</div>
                 <div className="mono dim">
                   {l.date_utc?.slice(0, 10)} · {l.rocket_name || "Unknown rocket"} ·{" "}

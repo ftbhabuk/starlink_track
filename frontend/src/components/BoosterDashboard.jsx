@@ -58,9 +58,14 @@ export default function BoosterDashboard({ data, loading }) {
       </div>
       <div className={`source-note ${boostersStale ? "warn" : ""}`}>
         <span className="mono">
-          Source: api.spacexdata.com · Latest launch in feed: {dateOnly(boostersApi?.latest_launch_date_utc)} ({boostersApi?.days_since_latest_launch ?? "?"} days ago)
+          Source: {boostersApi?.source || "unknown"} · Latest launch in feed: {dateOnly(boostersApi?.latest_launch_date_utc)}
         </span>
       </div>
+      {data?.data_sources?.confidence_note && (
+        <div className="source-note warn">
+          <span className="mono">{data.data_sources.confidence_note}</span>
+        </div>
+      )}
 
       <div className="stats-bar">
         {cards.map((c) => (
@@ -116,7 +121,12 @@ export default function BoosterDashboard({ data, loading }) {
           <tbody>
             {filtered.map((b) => (
               <tr key={b.core_id} className="sat-row" onClick={() => setSelected(b)}>
-                <td className="name-cell">{b.serial || "Unknown"}</td>
+                <td className="name-cell">
+                  <div className="booster-cell">
+                    {b.image_url && <img className="booster-thumb" src={b.image_url} alt={b.serial || "Booster"} loading="lazy" />}
+                    <span>{b.serial || "Unknown"}</span>
+                  </div>
+                </td>
                 <td className="mono dim">{b.status || "unknown"}</td>
                 <td className="mono">{b.mission_count}</td>
                 <td className="mono">{b.reuse_count ?? 0}</td>

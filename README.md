@@ -159,6 +159,8 @@ Then open http://localhost:5173 in your browser.
 |---|---|---|
 | [CelesTrak](https://celestrak.org) | TLE data, orbital elements | None — free |
 | [Space-Track](https://space-track.org) | Launch dates, decay/reentry info | Free account |
+| [SpaceXNow](https://spacexnow.com) | SpaceX launch/booster/mission stats pages | None — scraped |
+| [SpaceX.com](https://www.spacex.com) | Falcon 9 vehicle/launch page metadata + imagery | None — scraped |
 
 ---
 

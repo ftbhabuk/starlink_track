@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
+from html import unescape
 import re
 import requests
 from database import fetchall, fetchone
@@ -144,6 +145,180 @@ def _fetch_launch_page_summary(url: str) -> Optional[str]:
         return None
 
 
+def _fetch_text_lines(url: str) -> list[str]:
+    resp = requests.get(url, timeout=20)
+    resp.raise_for_status()
+    html = resp.text
+    html = re.sub(r"(?is)<script[^>]*>.*?</script>", " ", html)
+    html = re.sub(r"(?is)<style[^>]*>.*?</style>", " ", html)
+    html = re.sub(r"(?i)</(p|div|li|h1|h2|h3|h4|h5|h6|tr|td|section|article|br)>", "\n", html)
+    text = re.sub(r"(?is)<[^>]+>", " ", html)
+    text = unescape(text)
+    lines = [re.sub(r"\s+", " ", line).strip() for line in text.splitlines()]
+    return [line for line in lines if line]
+
+
+def _parse_metric_pair(value: str) -> tuple[Optional[int], Optional[int]]:
+    m = re.search(r"([0-9,]+)\s*/\s*([0-9,]+)", value)
+    if not m:
+        return None, None
+    return int(m.group(1).replace(",", "")), int(m.group(2).replace(",", ""))
+
+
+def _extract_first_int(value: str) -> Optional[int]:
+    m = re.search(r"([0-9,]+)", value)
+    if not m:
+        return None
+    return int(m.group(1).replace(",", ""))
+
+
+def _fetch_spacexnow_stats() -> dict:
+    url = "https://spacexnow.com/stats"
+    lines = _fetch_text_lines(url)
+    text = " ".join(lines)
+
+    f9_success, f9_total = _parse_metric_pair(
+        next((line for line in lines if line.startswith("Falcon 9 ")), "")
+    )
+    landed_success, landed_attempts = _parse_metric_pair(
+        next((line for line in lines if line.startswith("Landed ")), "")
+    )
+    reflown_total = _extract_first_int(
+        next((line for line in lines if line.startswith("Reflown ")), "")
+    )
+    block5_reflown_total = _extract_first_int(
+        next((line for line in lines if "Block 5 reflown" in line), "")
+    )
+
+    # Robust fallback on full-page text when heading-based line parse changes.
+    if f9_success is None:
+        m = re.search(r"Falcon 9\s+([0-9,]+)\s*/\s*([0-9,]+)", text, flags=re.IGNORECASE)
+        if m:
+            f9_success = int(m.group(1).replace(",", ""))
+            f9_total = int(m.group(2).replace(",", ""))
+    if landed_success is None:
+        m = re.search(r"Landed\s+([0-9,]+)\s*/\s*([0-9,]+)", text, flags=re.IGNORECASE)
+        if m:
+            landed_success = int(m.group(1).replace(",", ""))
+            landed_attempts = int(m.group(2).replace(",", ""))
+    if reflown_total is None:
+        m = re.search(r"Reflown\s+([0-9,]+)\s+booster reuses", text, flags=re.IGNORECASE)
+        if m:
+            reflown_total = int(m.group(1).replace(",", ""))
+
+    return {
+        "source": "spacexnow.com/stats",
+        "source_url": url,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "falcon9_successful_missions": f9_success,
+        "falcon9_total_missions": f9_total,
+        "booster_landed_successes": landed_success,
+        "booster_landed_attempts": landed_attempts,
+        "booster_reflights": reflown_total,
+        "block5_reflights": block5_reflown_total,
+    }
+
+
+def _parse_spacexnow_missions(url: str, limit: int = 200, source_label: str = "spacexnow") -> list[dict]:
+    lines = _fetch_text_lines(url)
+    missions = []
+    ignore_titles = {
+        "SpaceXNow",
+        "Home",
+        "Past",
+        "Upcoming",
+        "Boosters",
+        "Capsules",
+        "Stats",
+        "Projects",
+        "Calendar",
+        "Settings",
+        "Notifications",
+        "Support us",
+        "Like this app?",
+        "Download for Android",
+        "Download for iOS",
+    }
+    orbit_tokens = {"LEO", "GTO", "SSO", "MEO", "GEO", "HEO", "Polar", "Suborbital", "TBD"}
+    landing_tokens = {"ASOG", "JRTI", "OCISLY", "LZ-1", "LZ-2", "LZ-4", "LZ-40", "ASDS", "TBD"}
+
+    idx = 0
+    while idx < len(lines):
+        line = lines[idx]
+        if not line.startswith("By "):
+            idx += 1
+            continue
+
+        title = lines[idx - 1] if idx > 0 else None
+        if not title or title in ignore_titles or title.startswith("Updated"):
+            idx += 1
+            continue
+
+        rocket_line = lines[idx + 1] if idx + 1 < len(lines) else None
+        location_line = lines[idx + 2] if idx + 2 < len(lines) else None
+        extra = []
+        for j in range(idx + 3, min(idx + 8, len(lines))):
+            candidate = lines[j]
+            if candidate.startswith("By "):
+                break
+            extra.append(candidate)
+
+        booster_serial = None
+        if rocket_line:
+            m = re.search(r"(B[0-9]{4}\.[0-9]+)", rocket_line)
+            if m:
+                booster_serial = m.group(1)
+
+        orbit = next((x for x in extra if x in orbit_tokens), None)
+        landing_site = next((x for x in extra if x in landing_tokens), None)
+        reused = any(x.lower() == "reused" for x in extra)
+
+        missions.append(
+            {
+                "name": title,
+                "date_utc": None,
+                "provider": line.replace("By ", "").strip(),
+                "rocket_line": rocket_line,
+                "location": location_line,
+                "orbit": orbit,
+                "landing_site": landing_site,
+                "reused": reused,
+                "booster_serial": booster_serial,
+                "source": source_label,
+                "source_url": url,
+            }
+        )
+        if len(missions) >= limit:
+            break
+        idx += 1
+    return missions
+
+
+def _extract_og_image(url: str) -> Optional[str]:
+    try:
+        resp = requests.get(url, timeout=12)
+        if resp.status_code != 200:
+            return None
+        m = re.search(
+            r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
+            resp.text,
+            flags=re.IGNORECASE,
+        )
+        return m.group(1).strip() if m else None
+    except requests.RequestException:
+        return None
+
+
+def _fetch_vehicle_images() -> dict:
+    pages = {
+        "falcon9": "https://www.spacex.com/vehicles/falcon-9/",
+        "falconheavy": "https://www.spacex.com/vehicles/falcon-heavy/",
+        "dragon": "https://www.spacex.com/vehicles/dragon/",
+        "starship": "https://www.spacex.com/vehicles/starship/",
+    }
+    return {k: _extract_og_image(v) for k, v in pages.items()}
+
+
 def _parse_date_utc(value: Optional[str]) -> Optional[datetime]:
     if not value:
         return None
@@ -238,214 +413,101 @@ def _fetch_falcon9_vehicle_page_stats() -> Optional[dict]:
 
 
 def _fetch_spacex_rocket_stats():
-    rockets_resp = requests.get(f"{SPACEX_API}/rockets", timeout=30)
-    launches_resp = requests.post(
-        f"{SPACEX_API}/launches/query",
-        json={
-            "query": {"upcoming": False},
-            "options": {
-                "pagination": False,
-                "sort": {"date_utc": "desc"},
-                "select": ["name", "date_utc", "success", "rocket", "cores"],
-            },
-        },
-        timeout=30,
+    stats = _fetch_spacexnow_stats()
+    past = _parse_spacexnow_missions("https://spacexnow.com/past", limit=120, source_label="spacexnow/past")
+    upcoming = _parse_spacexnow_missions(
+        "https://spacexnow.com/upcoming", limit=40, source_label="spacexnow/upcoming"
     )
-    rockets_resp.raise_for_status()
-    launches_resp.raise_for_status()
+    vehicle_images = _fetch_vehicle_images()
 
-    rockets = rockets_resp.json()
-    launches = launches_resp.json().get("docs", [])
-    by_rocket = {r["id"]: r for r in rockets}
-    latest_api_launch_dt = _parse_date_utc((launches[0] or {}).get("date_utc")) if launches else None
+    f9_completed = stats.get("falcon9_successful_missions")
+    f9_total = stats.get("falcon9_total_missions")
+    total_landings = stats.get("booster_landed_successes")
+    landed_attempts = stats.get("booster_landed_attempts")
+    total_reflights = stats.get("booster_reflights")
 
-    rocket_stats = {
-        r["id"]: {
-            "rocket_id": r["id"],
-            "rocket_name": r["name"],
-            "first_flight": r.get("first_flight"),
-            "active": r.get("active"),
-            "stages": r.get("stages"),
-            "boosters": r.get("boosters"),
-            "cost_per_launch": r.get("cost_per_launch"),
-            "success_rate_pct": r.get("success_rate_pct"),
-            "wikipedia": r.get("wikipedia"),
-            "total_launches": 0,
-            "successful_launches": 0,
-            "failed_launches": 0,
-            "total_core_flights": 0,
-            "booster_landings": 0,
-            "reused_core_flights": 0,
-            "missions": [],
+    recent_launches = []
+    for mission in past[:10]:
+        rocket_line = (mission.get("rocket_line") or "").upper()
+        image_url = (
+            vehicle_images.get("falconheavy")
+            if "FH" in rocket_line or "FALCON HEAVY" in rocket_line
+            else vehicle_images.get("starship")
+            if "STARSHIP" in rocket_line
+            else vehicle_images.get("dragon")
+            if "DRAGON" in rocket_line
+            else vehicle_images.get("falcon9")
+        )
+        recent_launches.append(
+            {
+                "name": mission.get("name"),
+                "date_utc": None,
+                "success": None,
+                "rocket_name": mission.get("rocket_line"),
+                "site_url": mission.get("source_url"),
+                "site_summary": f'Landing: {mission.get("landing_site") or "Unknown"} · Orbit: {mission.get("orbit") or "Unknown"}',
+                "source": mission.get("source"),
+                "image_url": image_url,
+            }
+        )
+
+    rockets = [
+        {
+            "rocket_id": "falcon9",
+            "rocket_name": "Falcon 9",
+            "mission_count": f9_total,
+            "successful_launches": f9_completed,
+            "booster_landings": total_landings,
+            "reused_core_flights": total_reflights,
+            "launch_success_rate": _pct(f9_completed or 0, f9_total or 0),
+            "landing_rate": _pct(total_landings or 0, landed_attempts or 0),
+            "reusability_rate": _pct(total_reflights or 0, f9_total or 0),
+            "recent_missions": recent_launches[:8],
+            "image_url": vehicle_images.get("falcon9"),
         }
-        for r in rockets
-    }
-
-    total_landings = 0
-    total_core_flights = 0
-    total_reused_core_flights = 0
-    total_successful = 0
-    recent_launches_fallback = []
-    falcon9_rocket_id = next(
-        (r["id"] for r in rockets if str(r.get("name", "")).lower() == "falcon 9"),
-        None,
-    )
-    f9_completed_missions_calc = 0
-    f9_total_landings_calc = 0
-    f9_total_reflights_calc = 0
-
-    for launch in launches:
-        rocket_id = launch.get("rocket")
-        if rocket_id not in by_rocket:
-            continue
-
-        stats = rocket_stats[rocket_id]
-        stats["total_launches"] += 1
-
-        if launch.get("success") is True:
-            stats["successful_launches"] += 1
-            total_successful += 1
-        elif launch.get("success") is False:
-            stats["failed_launches"] += 1
-
-        stats["missions"].append(
-            {
-                "name": launch.get("name"),
-                "date_utc": launch.get("date_utc"),
-                "success": launch.get("success"),
-            }
-        )
-
-        for core in launch.get("cores") or []:
-            stats["total_core_flights"] += 1
-            total_core_flights += 1
-
-            if core.get("landing_success") is True:
-                stats["booster_landings"] += 1
-                total_landings += 1
-
-            if (core.get("flight") or 0) > 1:
-                stats["reused_core_flights"] += 1
-                total_reused_core_flights += 1
-
-        if falcon9_rocket_id and rocket_id == falcon9_rocket_id:
-            f9_completed_missions_calc += 1
-            for core in launch.get("cores") or []:
-                if core.get("landing_success") is True:
-                    f9_total_landings_calc += 1
-                if (core.get("flight") or 0) > 1:
-                    f9_total_reflights_calc += 1
-
-    for launch in launches[:10]:
-        rocket_name = by_rocket.get(launch.get("rocket"), {}).get("name")
-        recent_launches_fallback.append(
-            {
-                "name": launch.get("name"),
-                "date_utc": launch.get("date_utc"),
-                "success": launch.get("success"),
-                "rocket_name": rocket_name,
-                "site_url": None,
-                "site_summary": None,
-                "source": "api.spacexdata.com",
-            }
-        )
-
-    rocket_list = []
-    for r in rocket_stats.values():
-        recent_missions = sorted(
-            r["missions"],
-            key=lambda m: m.get("date_utc") or "",
-            reverse=True,
-        )[:8]
-        rocket_list.append(
-            {
-                **r,
-                "mission_count": len(r["missions"]),
-                "recent_missions": recent_missions,
-                "launch_success_rate": _pct(
-                    r["successful_launches"], r["total_launches"]
-                ),
-                "landing_rate": _pct(r["booster_landings"], r["total_core_flights"]),
-                "reusability_rate": _pct(
-                    r["reused_core_flights"], r["total_core_flights"]
-                ),
-            }
-        )
-
-    rocket_list.sort(key=lambda r: r["mission_count"], reverse=True)
-
-    f9_official = _fetch_falcon9_vehicle_page_stats()
-    f9_completed = (
-        f9_official.get("completed_missions")
-        if f9_official and f9_official.get("completed_missions") is not None
-        else f9_completed_missions_calc
-    )
-    f9_landings = (
-        f9_official.get("total_landings")
-        if f9_official and f9_official.get("total_landings") is not None
-        else f9_total_landings_calc
-    )
-    f9_reflights = (
-        f9_official.get("total_reflights")
-        if f9_official and f9_official.get("total_reflights") is not None
-        else f9_total_reflights_calc
-    )
-    recent_launches = _fetch_spacex_launches_listing(limit=10)
-    recent_launches_source = "spacex.com/launches" if recent_launches else "api.spacexdata.com"
-    if not recent_launches:
-        recent_launches = recent_launches_fallback
+    ]
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "overall": {
-            "scope": "falcon9",
+            "scope": "spacexnow",
             "total_launches": f9_completed,
-            "successful_launches": None,
-            "launch_success_rate": None,
-            "booster_landings": f9_landings,
-            "landing_rate": _pct(f9_landings, f9_completed),
-            "total_core_flights": f9_completed,
-            "reused_core_flights": f9_reflights,
-            "reusability_rate": _pct(f9_reflights, f9_completed),
-        },
-        "all_rockets_overall": {
-            "total_rockets": len(rockets),
-            "active_rockets": sum(1 for r in rockets if r.get("active")),
-            "total_launches": len(launches),
-            "successful_launches": total_successful,
-            "launch_success_rate": _pct(total_successful, len(launches)),
+            "successful_launches": f9_completed,
+            "launch_success_rate": _pct(f9_completed or 0, f9_total or 0),
             "booster_landings": total_landings,
-            "landing_rate": _pct(total_landings, total_core_flights),
-            "total_core_flights": total_core_flights,
-            "reused_core_flights": total_reused_core_flights,
-            "reusability_rate": _pct(total_reused_core_flights, total_core_flights),
+            "landing_rate": _pct(total_landings or 0, landed_attempts or 0),
+            "total_core_flights": f9_total,
+            "reused_core_flights": total_reflights,
+            "reusability_rate": _pct(total_reflights or 0, f9_total or 0),
+            "upcoming_missions": len(upcoming),
         },
         "falcon9": {
             "completed_missions": f9_completed,
-            "total_landings": f9_landings,
-            "total_reflights": f9_reflights,
-            "calculated": {
-                "completed_missions": f9_completed_missions_calc,
-                "total_landings": f9_total_landings_calc,
-                "total_reflights": f9_total_reflights_calc,
+            "total_missions": f9_total,
+            "total_landings": total_landings,
+            "landing_attempts": landed_attempts,
+            "total_reflights": total_reflights,
+            "source": {
+                "source_type": "spacexnow.com",
+                "source_url": "https://spacexnow.com/stats",
             },
-            "source": f9_official
-            or {"source_type": "api.spacexdata.com", "source_url": "https://api.spacexdata.com/v4"},
         },
         "data_sources": {
             "launches_list": {
-                "source": recent_launches_source,
+                "source": "spacexnow.com/past",
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
             },
             "rockets_api": {
-                "source": "api.spacexdata.com",
-                "latest_launch_date_utc": latest_api_launch_dt.isoformat() if latest_api_launch_dt else None,
-                "days_since_latest_launch": _days_since(latest_api_launch_dt),
-                "is_stale": (_days_since(latest_api_launch_dt) or 0) > 120 if latest_api_launch_dt else True,
+                "source": "spacexnow.com/stats",
+                "latest_launch_date_utc": None,
+                "days_since_latest_launch": None,
+                "is_stale": False,
             },
         },
         "recent_launches": recent_launches,
-        "rockets": rocket_list,
+        "upcoming_launches": upcoming[:10],
+        "rockets": rockets,
+        "vehicle_images": vehicle_images,
     }
 
 
@@ -456,204 +518,163 @@ def _is_retired_status(status: Optional[str]) -> bool:
 
 
 def _fetch_spacex_booster_intel():
-    cores_resp = requests.get(f"{SPACEX_API}/cores", timeout=30)
-    landpads_resp = requests.get(f"{SPACEX_API}/landpads", timeout=30)
-    ships_resp = requests.get(f"{SPACEX_API}/ships", timeout=30)
-    launches_resp = requests.post(
-        f"{SPACEX_API}/launches/query",
-        json={
-            "query": {"upcoming": False},
-            "options": {
-                "pagination": False,
-                "sort": {"date_utc": "desc"},
-                "select": [
-                    "name",
-                    "date_utc",
-                    "success",
-                    "flight_number",
-                    "rocket",
-                    "cores",
-                ],
-            },
-        },
-        timeout=30,
-    )
-    rockets_resp = requests.get(f"{SPACEX_API}/rockets", timeout=30)
+    past = _parse_spacexnow_missions("https://spacexnow.com/past", limit=220, source_label="spacexnow/past")
+    vehicle_images = _fetch_vehicle_images()
+    asds_sites = {"ASOG", "JRTI", "OCISLY", "ASDS"}
+    rtls_sites = {"LZ-1", "LZ-2", "LZ-4", "LZ-40"}
+    known_landing_sites = asds_sites | rtls_sites
 
-    cores_resp.raise_for_status()
-    landpads_resp.raise_for_status()
-    ships_resp.raise_for_status()
-    launches_resp.raise_for_status()
-    rockets_resp.raise_for_status()
+    boosters_by_serial = {}
+    pad_usage = {}
 
-    cores = cores_resp.json()
-    landpads = landpads_resp.json()
-    ships = ships_resp.json()
-    launches = launches_resp.json().get("docs", [])
-    rockets = rockets_resp.json()
-    latest_api_launch_dt = _parse_date_utc((launches[0] or {}).get("date_utc")) if launches else None
+    for mission in past:
+        serial = mission.get("booster_serial")
+        landing_site = mission.get("landing_site")
+        rocket_line = mission.get("rocket_line") or ""
+        landing_type = (
+            "ASDS"
+            if landing_site in asds_sites
+            else "RTLS"
+            if landing_site in rtls_sites
+            else "Unknown"
+        )
 
-    by_core = {c["id"]: c for c in cores}
-    by_rocket = {r["id"]: r for r in rockets}
-    by_landpad = {lp["id"]: lp for lp in landpads}
-
-    booster_stats = {
-        c["id"]: {
-            "core_id": c["id"],
-            "serial": c.get("serial"),
-            "status": c.get("status"),
-            "type": c.get("type"),
-            "block": c.get("block"),
-            "reuse_count": c.get("reuse_count", 0),
-            "rtls_attempts": c.get("rtls_attempts", 0),
-            "rtls_landings": c.get("rtls_landings", 0),
-            "asds_attempts": c.get("asds_attempts", 0),
-            "asds_landings": c.get("asds_landings", 0),
-            "last_update": c.get("last_update"),
-            "launch_count": 0,
-            "landing_success_count": 0,
-            "mission_history": [],
-        }
-        for c in cores
-    }
-
-    landpad_usage = {
-        lp["id"]: {
-            "landpad_id": lp["id"],
-            "name": lp.get("name"),
-            "full_name": lp.get("full_name"),
-            "type": lp.get("type"),
-            "locality": lp.get("locality"),
-            "region": lp.get("region"),
-            "status": lp.get("status"),
-            "launches": lp.get("launches", []),
-            "landing_attempts": 0,
-            "landing_successes": 0,
-            "boosters": set(),
-        }
-        for lp in landpads
-    }
-
-    for launch in launches:
-        rocket_name = by_rocket.get(launch.get("rocket"), {}).get("name")
-        for core_event in launch.get("cores") or []:
-            core_id = core_event.get("core")
-            if core_id not in by_core:
-                continue
-
-            stat = booster_stats[core_id]
+        if serial:
+            parts = serial.split(".")
+            flight_no = int(parts[1]) if len(parts) == 2 and parts[1].isdigit() else None
+            block = (
+                5
+                if "F9 B5" in rocket_line.upper() or "FALCON 9 BLOCK 5" in rocket_line.upper()
+                else None
+            )
+            stat = boosters_by_serial.setdefault(
+                serial,
+                {
+                    "core_id": serial,
+                    "serial": serial,
+                    "status": "tracked",
+                    "type": "Falcon 9 Booster",
+                    "block": block,
+                    "reuse_count": max((flight_no or 1) - 1, 0),
+                    "rtls_attempts": 0,
+                    "rtls_landings": 0,
+                    "asds_attempts": 0,
+                    "asds_landings": 0,
+                    "last_update": datetime.now(timezone.utc).isoformat(),
+                    "launch_count": 0,
+                    "landing_success_count": 0,
+                    "mission_history": [],
+                    "image_url": vehicle_images.get("falcon9"),
+                },
+            )
             stat["launch_count"] += 1
+            if flight_no:
+                stat["reuse_count"] = max(stat["reuse_count"], flight_no - 1)
 
-            landed = core_event.get("landing_success") is True
-            if landed:
+            if landing_type == "ASDS":
+                stat["asds_attempts"] += 1
+                if landing_site in known_landing_sites:
+                    stat["asds_landings"] += 1
+            elif landing_type == "RTLS":
+                stat["rtls_attempts"] += 1
+                if landing_site in known_landing_sites:
+                    stat["rtls_landings"] += 1
+
+            if landing_site in known_landing_sites:
                 stat["landing_success_count"] += 1
 
-            mission = {
-                "mission_name": launch.get("name"),
-                "date_utc": launch.get("date_utc"),
-                "flight_number": launch.get("flight_number"),
-                "launch_success": launch.get("success"),
-                "core_flight_number": core_event.get("flight"),
-                "landing_success": core_event.get("landing_success"),
-                "landing_type": "ASDS"
-                if core_event.get("landing_type") == "ASDS"
-                else ("RTLS" if core_event.get("landing_type") == "RTLS" else core_event.get("landing_type")),
-                "landpad_id": core_event.get("landpad"),
-                "landpad_name": by_landpad.get(core_event.get("landpad"), {}).get("name"),
-                "rocket_name": rocket_name,
-            }
-            stat["mission_history"].append(mission)
+            stat["mission_history"].append(
+                {
+                    "mission_name": mission.get("name"),
+                    "date_utc": None,
+                    "flight_number": None,
+                    "launch_success": None,
+                    "core_flight_number": flight_no,
+                    "landing_success": landing_site in known_landing_sites,
+                    "landing_type": landing_type,
+                    "landpad_id": landing_site,
+                    "landpad_name": landing_site,
+                    "rocket_name": mission.get("rocket_line"),
+                }
+            )
 
-            landpad_id = core_event.get("landpad")
-            if landpad_id in landpad_usage:
-                landpad_usage[landpad_id]["landing_attempts"] += 1
-                if landed:
-                    landpad_usage[landpad_id]["landing_successes"] += 1
-                serial = stat.get("serial")
-                if serial:
-                    landpad_usage[landpad_id]["boosters"].add(serial)
+        if landing_site and landing_site not in {"TBD", "Unknown"}:
+            pad = pad_usage.setdefault(
+                landing_site,
+                {
+                    "landpad_id": landing_site,
+                    "name": landing_site,
+                    "full_name": landing_site,
+                    "type": "ASDS" if landing_site in asds_sites else "RTLS" if landing_site in rtls_sites else "Other",
+                    "locality": None,
+                    "region": None,
+                    "status": "active",
+                    "launches": [],
+                    "landing_attempts": 0,
+                    "landing_successes": 0,
+                    "boosters": set(),
+                },
+            )
+            pad["landing_attempts"] += 1
+            if landing_site in known_landing_sites:
+                pad["landing_successes"] += 1
+            if serial:
+                pad["boosters"].add(serial)
 
     boosters = []
-    for booster in booster_stats.values():
-        missions = sorted(
-            booster["mission_history"],
-            key=lambda m: m.get("date_utc") or "",
-            reverse=True,
-        )
+    for booster in boosters_by_serial.values():
+        missions = booster["mission_history"]
         reused = [m for m in missions if (m.get("core_flight_number") or 0) > 1]
         total_landings = (booster.get("asds_landings") or 0) + (booster.get("rtls_landings") or 0)
-        total_landing_attempts = (booster.get("asds_attempts") or 0) + (booster.get("rtls_attempts") or 0)
+        total_attempts = (booster.get("asds_attempts") or 0) + (booster.get("rtls_attempts") or 0)
 
         boosters.append(
             {
                 **booster,
                 "mission_count": len(missions),
                 "missions_reused": len(reused),
-                "is_retired": _is_retired_status(booster.get("status")),
-                "landing_rate": _pct(total_landings, total_landing_attempts),
+                "is_retired": False,
+                "landing_rate": _pct(total_landings, total_attempts),
                 "recent_missions": missions[:12],
                 "reuse_missions": reused[:12],
             }
         )
 
     boosters.sort(
-        key=lambda b: (
-            b["mission_count"],
-            b.get("reuse_count", 0),
-            b.get("landing_success_count", 0),
-        ),
+        key=lambda b: (b["mission_count"], b.get("reuse_count", 0), b.get("landing_success_count", 0)),
         reverse=True,
     )
 
     landpads_out = []
-    for pad in landpad_usage.values():
+    for pad in pad_usage.values():
         landpads_out.append(
             {
                 **pad,
                 "boosters": sorted(pad["boosters"]),
                 "distinct_boosters": len(pad["boosters"]),
-                "landing_success_rate": _pct(
-                    pad["landing_successes"], pad["landing_attempts"]
-                ),
+                "landing_success_rate": _pct(pad["landing_successes"], pad["landing_attempts"]),
             }
         )
-    landpads_out.sort(key=lambda lp: lp["landing_attempts"], reverse=True)
+    landpads_out.sort(key=lambda p: p["landing_attempts"], reverse=True)
 
-    droneships = []
-    for ship in ships:
-        roles = ship.get("roles") or []
-        if any("ASDS" in str(role).upper() for role in roles):
-            droneships.append(
-                {
-                    "ship_id": ship.get("id"),
-                    "name": ship.get("name"),
-                    "active": ship.get("active"),
-                    "home_port": ship.get("home_port"),
-                    "roles": roles,
-                    "year_built": ship.get("year_built"),
-                    "mass_kg": ship.get("mass_kg"),
-                    "model": ship.get("model"),
-                    "type": ship.get("type"),
-                    "link": ship.get("link"),
-                    "image": (ship.get("image") or None),
-                }
-            )
+    droneships = [
+        {"ship_id": "ASOG", "name": "A Shortfall Of Gravitas", "active": True, "home_port": None, "roles": ["ASDS"], "year_built": None, "mass_kg": None, "model": None, "type": "ASDS", "link": None, "image": None},
+        {"ship_id": "JRTI", "name": "Just Read The Instructions", "active": True, "home_port": None, "roles": ["ASDS"], "year_built": None, "mass_kg": None, "model": None, "type": "ASDS", "link": None, "image": None},
+        {"ship_id": "OCISLY", "name": "Of Course I Still Love You", "active": True, "home_port": None, "roles": ["ASDS"], "year_built": None, "mass_kg": None, "model": None, "type": "ASDS", "link": None, "image": None},
+    ]
 
     total_boosters = len(boosters)
-    total_retired = sum(1 for b in boosters if b["is_retired"])
     total_reused = sum(1 for b in boosters if b.get("reuse_count", 0) > 0)
     total_missions = sum(b["mission_count"] for b in boosters)
-    total_landings = sum(
-        (b.get("asds_landings") or 0) + (b.get("rtls_landings") or 0) for b in boosters
-    )
+    total_landings = sum((b.get("asds_landings") or 0) + (b.get("rtls_landings") or 0) for b in boosters)
     max_reuse = max((b.get("reuse_count", 0) for b in boosters), default=0)
 
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "overall": {
             "total_boosters": total_boosters,
-            "retired_boosters": total_retired,
-            "active_boosters": total_boosters - total_retired,
+            "retired_boosters": 0,
+            "active_boosters": total_boosters,
             "boosters_reused_at_least_once": total_reused,
             "reuse_adoption_rate": _pct(total_reused, total_boosters),
             "total_booster_missions": total_missions,
@@ -665,12 +686,14 @@ def _fetch_spacex_booster_intel():
         "droneships": droneships,
         "data_sources": {
             "boosters_api": {
-                "source": "api.spacexdata.com",
-                "latest_launch_date_utc": latest_api_launch_dt.isoformat() if latest_api_launch_dt else None,
-                "days_since_latest_launch": _days_since(latest_api_launch_dt),
-                "is_stale": (_days_since(latest_api_launch_dt) or 0) > 120 if latest_api_launch_dt else True,
-            }
+                "source": "spacexnow.com/past",
+                "latest_launch_date_utc": None,
+                "days_since_latest_launch": None,
+                "is_stale": False,
+            },
+            "confidence_note": "Booster lifecycle inferred from mission text feed, not official per-core API.",
         },
+        "vehicle_images": vehicle_images,
     }
 
 

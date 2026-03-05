@@ -16,6 +16,7 @@ export default function RocketStats({ data, loading }) {
   const launchesListSource = data?.data_sources?.launches_list?.source || "unknown";
   const rocketsApi = data?.data_sources?.rockets_api;
   const rocketsStale = Boolean(rocketsApi?.is_stale);
+  const falconImage = data?.vehicle_images?.falcon9;
 
   const cards = [
     { label: "Completed Missions (F9)", value: overall.total_launches?.toLocaleString() },
@@ -32,9 +33,14 @@ export default function RocketStats({ data, loading }) {
       </div>
       <div className={`source-note ${rocketsStale ? "warn" : ""}`}>
         <span className="mono">
-          Launch list source: {launchesListSource} · API latest launch: {dateOnly(rocketsApi?.latest_launch_date_utc)} ({rocketsApi?.days_since_latest_launch ?? "?"} days ago)
+          Launch list source: {launchesListSource} · Provider: {rocketsApi?.source || "unknown"} · Latest launch: {dateOnly(rocketsApi?.latest_launch_date_utc)}
         </span>
       </div>
+      {falconImage && (
+        <div className="hero-image-wrap">
+          <img className="hero-image" src={falconImage} alt="Falcon 9" loading="lazy" />
+        </div>
+      )}
 
       <div className="stats-bar">
         {cards.map((c) => (
