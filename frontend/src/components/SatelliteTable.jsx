@@ -1,5 +1,5 @@
 export default function SatelliteTable({ satellites, loading, onSelect, selected }) {
-  const statusColor = (s) => ({ active: "#f2f2f2", decayed: "#bdbdbd", decaying: "#d9d9d9", unknown: "#8f8f8f" }[s] || "#8f8f8f");
+  const statusColor = (s) => ({ active: "#2ea043", decayed: "#da3633", decaying: "#d29922", unknown: "#8f8f8f" }[s] || "#8f8f8f");
 
   if (loading) {
     return (

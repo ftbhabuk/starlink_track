@@ -736,6 +736,33 @@ def _fetch_spacex_rocket_stats():
     }
 
 
+@app.get("/spacex/rockets/stats")
+def get_spacex_rocket_stats(refresh: bool = Query(False)):
+    global _spacex_cache_data, _spacex_cache_time
+
+    now = datetime.now(timezone.utc)
+    cache_valid = (
+        _spacex_cache_data is not None
+        and _spacex_cache_time is not None
+        and (now - _spacex_cache_time) < SPACEX_CACHE_TTL
+    )
+
+    if not refresh and cache_valid:
+        return _spacex_cache_data
+
+    try:
+        data = _fetch_spacex_rocket_stats()
+    except requests.RequestException as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Could not fetch SpaceX data: {exc}",
+        ) from exc
+
+    _spacex_cache_data = data
+    _spacex_cache_time = now
+    return data
+
+
 def _is_retired_status(status: Optional[str]) -> bool:
     if not status:
         return False
