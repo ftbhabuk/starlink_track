@@ -17,6 +17,7 @@ DDL_SQL = """
 CREATE TABLE IF NOT EXISTS spacex_boosters (
     serial               TEXT PRIMARY KEY,
     vehicle              TEXT NOT NULL,
+    booster_type         TEXT,
     version              TEXT,
     status               TEXT NOT NULL,
     flights              INTEGER NOT NULL DEFAULT 0,
@@ -70,36 +71,36 @@ CREATE TABLE IF NOT EXISTS spacex_landing_sites (
 
 # Compact curated subset from the dataset provided by the user.
 BOOSTERS = [
-    {"serial": "B1103", "vehicle": "Falcon", "version": "Block 5", "status": "new", "flights": 0, "comment": "Undergoing testing at McGregor."},
-    {"serial": "B1102", "vehicle": "Falcon", "version": "Block 5", "status": "new", "flights": 0, "comment": "Completed testing at McGregor."},
-    {"serial": "B1101", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 2, "comment": "In operation in FL."},
-    {"serial": "B1100", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 3, "comment": "In operation in CA."},
-    {"serial": "B1099", "vehicle": "Falcon", "version": "Block 5", "status": "new", "flights": 0, "comment": "Converted Falcon Heavy Center Core."},
-    {"serial": "B1098", "vehicle": "Falcon", "version": "Block 5", "status": "new", "flights": 0, "comment": "Falcon Heavy Center Core."},
-    {"serial": "B1097", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 7, "comment": "In operation in CA."},
-    {"serial": "B1096", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 5, "comment": "In operation in FL."},
-    {"serial": "B1095", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 6, "comment": "In operation in FL."},
-    {"serial": "B1094", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 6, "comment": "In operation in FL."},
-    {"serial": "B1093", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 11, "comment": "In operation in CA."},
-    {"serial": "B1092", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 10, "comment": "In operation in FL."},
-    {"serial": "B1091", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 3, "comment": "Converted Falcon Heavy center core."},
-    {"serial": "B1090", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 11, "comment": "In operation in FL."},
-    {"serial": "B1089", "vehicle": "Falcon", "version": "Block 5", "status": "destroyed", "flights": 1, "comment": "Falcon Heavy center core. Intentionally expended on Europa Clipper."},
-    {"serial": "B1088", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 14, "comment": "In operation in CA."},
-    {"serial": "B1087", "vehicle": "Falcon", "version": "Block 5", "status": "destroyed", "flights": 1, "comment": "Falcon Heavy center core. Intentionally expended on GOES-U."},
-    {"serial": "B1086", "vehicle": "Falcon", "version": "Block 5", "status": "destroyed", "flights": 5, "comment": "Lost in fire after JRTI landing on 2025-03-03."},
-    {"serial": "B1085", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 14, "comment": "In operation in FL. Flew Crew-9."},
-    {"serial": "B1083", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 16, "comment": "In operation in FL. Flew Crew-8 and Polaris Dawn."},
-    {"serial": "B1082", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 20, "comment": "In operation in CA."},
-    {"serial": "B1081", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 22, "comment": "In operation in CA. Flew Crew-7."},
-    {"serial": "B1080", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 25, "comment": "In operation in FL. Flew AX-2, Euclid and AX-3."},
-    {"serial": "B1078", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 26, "comment": "In operation in FL. Flew Crew-6."},
-    {"serial": "B1077", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 26, "comment": "In operation in FL. Flew Crew-5."},
-    {"serial": "B1076", "vehicle": "Falcon", "version": "Block 5", "status": "destroyed", "flights": 22, "comment": "Intentionally expended on SpainSat NG II."},
-    {"serial": "B1075", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 21, "comment": "In operation in CA."},
-    {"serial": "B1071", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 32, "comment": "In operation in CA."},
-    {"serial": "B1069", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 30, "comment": "In operation in FL."},
-    {"serial": "B1067", "vehicle": "Falcon", "version": "Block 5", "status": "active", "flights": 33, "comment": "In operation in FL. Current fleet leader."},
+    {"serial": "B1103", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "new", "flights": 0, "comment": "Undergoing testing at McGregor."},
+    {"serial": "B1102", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "new", "flights": 0, "comment": "Completed testing at McGregor."},
+    {"serial": "B1101", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 2, "comment": "In operation in FL."},
+    {"serial": "B1100", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 3, "comment": "In operation in CA."},
+    {"serial": "B1099", "vehicle": "Falcon", "booster_type": "Falcon Heavy", "version": "Block 5", "status": "new", "flights": 0, "comment": "Converted Falcon Heavy Center Core."},
+    {"serial": "B1098", "vehicle": "Falcon", "booster_type": "Falcon Heavy", "version": "Block 5", "status": "new", "flights": 0, "comment": "Falcon Heavy Center Core."},
+    {"serial": "B1097", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 7, "comment": "In operation in CA."},
+    {"serial": "B1096", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 5, "comment": "In operation in FL."},
+    {"serial": "B1095", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 6, "comment": "In operation in FL."},
+    {"serial": "B1094", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 6, "comment": "In operation in FL."},
+    {"serial": "B1093", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 11, "comment": "In operation in CA."},
+    {"serial": "B1092", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 10, "comment": "In operation in FL."},
+    {"serial": "B1091", "vehicle": "Falcon", "booster_type": "Falcon Heavy", "version": "Block 5", "status": "active", "flights": 3, "comment": "Converted Falcon Heavy center core."},
+    {"serial": "B1090", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 11, "comment": "In operation in FL."},
+    {"serial": "B1089", "vehicle": "Falcon", "booster_type": "Falcon Heavy", "version": "Block 5", "status": "destroyed", "flights": 1, "comment": "Falcon Heavy center core. Intentionally expended on Europa Clipper."},
+    {"serial": "B1088", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 14, "comment": "In operation in CA."},
+    {"serial": "B1087", "vehicle": "Falcon", "booster_type": "Falcon Heavy", "version": "Block 5", "status": "destroyed", "flights": 1, "comment": "Falcon Heavy center core. Intentionally expended on GOES-U."},
+    {"serial": "B1086", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "destroyed", "flights": 5, "comment": "Lost in fire after JRTI landing on 2025-03-03."},
+    {"serial": "B1085", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 14, "comment": "In operation in FL. Flew Crew-9."},
+    {"serial": "B1083", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 16, "comment": "In operation in FL. Flew Crew-8 and Polaris Dawn."},
+    {"serial": "B1082", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 20, "comment": "In operation in CA."},
+    {"serial": "B1081", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 22, "comment": "In operation in CA. Flew Crew-7."},
+    {"serial": "B1080", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 25, "comment": "In operation in FL. Flew AX-2, Euclid and AX-3."},
+    {"serial": "B1078", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 26, "comment": "In operation in FL. Flew Crew-6."},
+    {"serial": "B1077", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 26, "comment": "In operation in FL. Flew Crew-5."},
+    {"serial": "B1076", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "destroyed", "flights": 22, "comment": "Intentionally expended on SpainSat NG II."},
+    {"serial": "B1075", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 21, "comment": "In operation in CA."},
+    {"serial": "B1071", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 32, "comment": "In operation in CA."},
+    {"serial": "B1069", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 30, "comment": "In operation in FL."},
+    {"serial": "B1067", "vehicle": "Falcon", "booster_type": "Falcon 9", "version": "Block 5", "status": "active", "flights": 33, "comment": "In operation in FL. Current fleet leader."},
 ]
 
 
@@ -253,25 +254,36 @@ def seed():
     execute("DELETE FROM spacex_landing_sites")
 
     now = datetime.now(timezone.utc)
+    booster_landing_counts = {}
+    for serial, _, _, landing_site in BOOSTER_MISSIONS:
+        if not landing_site:
+            continue
+        stats = booster_landing_counts.setdefault(serial, {"success": 0, "attempts": 0})
+        stats["success"] += 1
+        stats["attempts"] += 1
 
     print(f"Inserting boosters: {len(BOOSTERS)}")
+    execute(
+        "ALTER TABLE spacex_boosters ADD COLUMN IF NOT EXISTS booster_type TEXT"
+    )
     executemany(
         """
         INSERT INTO spacex_boosters (
-            serial, vehicle, version, status, flights, comment,
+            serial, vehicle, booster_type, version, status, flights, comment,
             landings_success, landings_attempts, updated_at
-        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
         """,
         [
             (
                 b["serial"],
                 b["vehicle"],
+                b.get("booster_type"),
                 b["version"],
                 b["status"],
                 b["flights"],
                 b["comment"],
-                0,
-                0,
+                booster_landing_counts.get(b["serial"], {}).get("success", 0),
+                booster_landing_counts.get(b["serial"], {}).get("attempts", 0),
                 now,
             )
             for b in BOOSTERS

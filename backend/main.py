@@ -776,7 +776,7 @@ def _fetch_spacex_booster_intel():
 
     boosters_rows = fetchall(
         """
-        SELECT serial, vehicle, version, status, flights, comment,
+        SELECT serial, vehicle, booster_type, version, status, flights, comment,
                landings_success, landings_attempts, updated_at
         FROM spacex_boosters
         ORDER BY flights DESC
@@ -829,9 +829,17 @@ def _fetch_spacex_booster_intel():
         rtls = sum(
             1 for m in missions if (m.get("landing_site") or "").upper() in rtls_sites
         )
-        landings = row.get("landings_success")
-        if landings is None:
-            landings = asds + rtls
+        derived_landings = asds + rtls
+        reported_landings = row.get("landings_success") or 0
+        reported_attempts = row.get("landings_attempts") or 0
+        if derived_landings == 0 and reported_landings > 0:
+            # Keep UI totals consistent even when mission-level rows are unavailable.
+            asds = reported_landings
+            rtls = 0
+            derived_landings = reported_landings
+        if (asds + rtls) > 0 and reported_attempts == 0:
+            reported_attempts = asds + rtls
+        landings = derived_landings if derived_landings > 0 else reported_landings
 
         is_retired = row.get("status") in {"retired", "lost", "destroyed", "expended"}
 
@@ -858,12 +866,12 @@ def _fetch_spacex_booster_intel():
                 "serial": serial,
                 "display_name": serial,
                 "status": row.get("status") or "unknown",
-                "type": "Falcon Booster",
+                "type": row.get("booster_type") or row.get("vehicle") or "Falcon Booster",
                 "block": row.get("version"),
                 "reuse_count": max(flights - 1, 0),
-                "rtls_attempts": rtls,
+                "rtls_attempts": rtls if reported_attempts == 0 else 0,
                 "rtls_landings": rtls,
-                "asds_attempts": asds,
+                "asds_attempts": asds if reported_attempts == 0 else reported_attempts,
                 "asds_landings": asds,
                 "last_update": row.get("updated_at").isoformat()
                 if row.get("updated_at")
@@ -1046,15 +1054,15 @@ def _fetch_spacex_booster_intel():
         "droneships": droneships,
         "data_sources": {
             "boosters_api": {
-                "source": "spacexnow.com (live scrape)",
+                "source": "spacexnow.com (DB-synced)",
                 "latest_launch_date_utc": None,
                 "days_since_latest_launch": None,
                 "is_stale": False,
             },
             "capsules": {
-                "source": "spacexnow.com (live scrape)",
+                "source": "spacexnow.com (DB-synced)",
             },
-            "confidence_note": "Booster/capsule data scraped from spacexnow.com using Playwright.",
+            "confidence_note": "Booster/capsule data is seeded then periodically synced from spacexnow.com.",
         },
         "vehicle_images": vehicle_images,
     }

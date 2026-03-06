@@ -69,6 +69,7 @@ CREATE TRIGGER satellites_updated_at
 CREATE TABLE IF NOT EXISTS spacex_boosters (
     serial               TEXT PRIMARY KEY,
     vehicle              TEXT NOT NULL,
+    booster_type         TEXT,
     version              TEXT,
     status               TEXT NOT NULL,
     flights              INTEGER NOT NULL DEFAULT 0,
