@@ -14,10 +14,6 @@ function pct(v) {
   return v == null ? "—" : `${v}%`;
 }
 
-function dateOnly(v) {
-  return v ? v.slice(0, 10) : "—";
-}
-
 export default function HomeLanding({
   stats,
   rocketStats,
@@ -25,6 +21,7 @@ export default function HomeLanding({
   loading,
   onOpenBoosters,
   onOpenStarlink,
+  onOpenLaunches,
 }) {
   const launches = rocketStats?.overall?.total_launches;
   const landings = rocketStats?.overall?.booster_landings;
@@ -34,11 +31,6 @@ export default function HomeLanding({
   const capsules = boosterIntel?.overall?.total_capsules;
   const activeStarlink = stats?.active;
   const totalSatellites = stats?.total;
-
-  const recent = rocketStats?.recent_launches || [];
-  const upcoming = rocketStats?.upcoming_launches || [];
-  const launchesSource = rocketStats?.data_sources?.launches_list?.source || "unknown";
-  const upcomingSource = rocketStats?.data_sources?.upcoming_launches?.source || "unknown";
 
   const images = {
     hero: HERO_SPACEX_IMAGE,
@@ -60,7 +52,7 @@ export default function HomeLanding({
     {
       badge: "[STARLINK]",
       title: "Starlink Constellation",
-      text: "Live constellation tracking with status filters, orbit shell grouping, and searchable satellite records.",
+      text: "Delivering high-speed internet from space. Track active satellites, orbit shells, and constellation health.",
       metric: `${num(totalSatellites)} tracked · ${num(activeStarlink)} active`,
       action: onOpenStarlink,
       actionLabel: "Open Starlink",
@@ -78,7 +70,7 @@ export default function HomeLanding({
     {
       badge: "[DRAGON]",
       title: "Dragon Vehicle",
-      text: "Crew and cargo spacecraft profile with capsule tracking context connected to current mission operations.",
+      text: "Advancing human spaceflight with reusable crew and cargo missions to orbit.",
       metric: `${num(capsules)} capsules tracked`,
       action: null,
       actionLabel: "",
@@ -87,7 +79,7 @@ export default function HomeLanding({
     {
       badge: "[STARSHIP]",
       title: "Starship Program",
-      text: "Heavy-lift development overview for next-generation missions, integrated into the same launch context view.",
+      text: "Next-generation heavy-lift system designed for deep-space transport and high-mass deployment.",
       metric: "Next-gen heavy lift context",
       action: null,
       actionLabel: "",
@@ -102,11 +94,12 @@ export default function HomeLanding({
           <p className="kicker">Mission Orientation</p>
           <h2>Get In Sync With The Current SpaceX Fleet State.</h2>
           <p className="hero-sub">
-            This platform tracks Falcon booster performance and Starlink constellation state,
+            Track Falcon booster performance and Starlink constellation state,
             with Dragon and Starship context in the same view.
           </p>
           <div className="hero-actions">
             <button className="cta-btn" onClick={onOpenBoosters}>Start With Boosters</button>
+            <button className="ghost-btn" onClick={onOpenLaunches}>View Launches</button>
             <button className="ghost-btn" onClick={onOpenStarlink}>Start With Starlink</button>
           </div>
         </div>
@@ -148,60 +141,6 @@ export default function HomeLanding({
             </div>
           </article>
         ))}
-      </div>
-
-      <div className="infra-grid home-grid reveal-up delay-2">
-        <section className="infra-panel">
-          <h3>Latest Launches</h3>
-          <div className="source-note">
-            <span className="mono">Source: {launchesSource}</span>
-          </div>
-          <div className="infra-list">
-            {recent.slice(0, 6).map((l) => (
-              <div key={`${l.name}-${l.date_utc}`} className="infra-item">
-                {l.image_url && (
-                  <img className="launch-thumb" src={l.image_url} alt={l.name || "Launch"} loading="lazy" />
-                )}
-                <div className="name-cell">{l.name}</div>
-                <div className="mono dim">
-                  {dateOnly(l.date_utc)} · {l.rocket_name || "Unknown rocket"} · {l.success ? "Success" : "Failure/Unknown"}
-                </div>
-                {l.site_summary && <div className="home-summary">{l.site_summary}</div>}
-                {l.site_url && (
-                  <a className="home-link mono" href={l.site_url} target="_blank" rel="noreferrer">
-                    Launch Page
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="infra-panel">
-          <h3>Next Launches</h3>
-          <div className="source-note">
-            <span className="mono">Source: {upcomingSource}</span>
-          </div>
-          <div className="infra-list">
-            {upcoming.slice(0, 5).map((l) => (
-              <div key={`${l.name}-${l.date_utc}`} className="infra-item">
-                {l.image_url && (
-                  <img className="launch-thumb" src={l.image_url} alt={l.name || "Launch"} loading="lazy" />
-                )}
-                <div className="name-cell">{l.name}</div>
-                <div className="mono dim">
-                  {dateOnly(l.date_utc)} · {l.rocket_name || "Unknown rocket"}
-                </div>
-                {l.site_summary && <div className="home-summary">{l.site_summary}</div>}
-                {l.site_url && (
-                  <a className="home-link mono" href={l.site_url} target="_blank" rel="noreferrer">
-                    Mission Details
-                  </a>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
       </div>
     </section>
   );

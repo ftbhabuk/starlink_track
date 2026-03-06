@@ -5,6 +5,7 @@ import StatsBar from "./components/StatsBar";
 import RocketStats from "./components/RocketStats";
 import BoosterDashboard from "./components/BoosterDashboard";
 import HomeLanding from "./components/HomeLanding";
+import LaunchesBoard from "./components/LaunchesBoard";
 import "./index.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -117,6 +118,12 @@ export default function App() {
               Boosters
             </button>
             <button
+              className={`nav-btn ${view === "launches" ? "active" : ""}`}
+              onClick={() => setView("launches")}
+            >
+              Launches
+            </button>
+            <button
               className={`nav-btn ${view === "starlink" ? "active" : ""}`}
               onClick={() => setView("starlink")}
             >
@@ -135,6 +142,7 @@ export default function App() {
             loading={rocketLoading || boosterLoading}
             onOpenBoosters={() => setView("boosters")}
             onOpenStarlink={() => setView("starlink")}
+            onOpenLaunches={() => setView("launches")}
           />
         )}
 
@@ -143,6 +151,10 @@ export default function App() {
             <RocketStats data={rocketStats} loading={rocketLoading} />
             <BoosterDashboard data={boosterIntel} loading={boosterLoading} />
           </>
+        )}
+
+        {view === "launches" && (
+          <LaunchesBoard data={rocketStats} loading={rocketLoading} />
         )}
 
         {view === "starlink" && (

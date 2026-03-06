@@ -572,6 +572,13 @@ def _fetch_rocketlaunchlive_upcoming(
                 if item.get("slug")
                 else None
             )
+            media_items = item.get("media") or []
+            media_image = None
+            for media in media_items:
+                candidate = media.get("url") or media.get("source_url")
+                if candidate:
+                    media_image = candidate
+                    break
             mapped.append(
                 {
                     "name": item.get("name"),
@@ -583,7 +590,18 @@ def _fetch_rocketlaunchlive_upcoming(
                     "site_url": source_url,
                     "site_summary": f"Pad: {pad.get('name') or 'Unknown'} · Site: {location or 'Unknown'}",
                     "source": "rocketlaunch.live/launches/next",
-                    "image_url": image_url,
+                    "image_url": media_image or image_url,
+                    "launch_description": item.get("launch_description"),
+                    "mission_description": item.get("mission_description"),
+                    "quicktext": item.get("quicktext"),
+                    "weather_summary": item.get("weather_summary"),
+                    "weather_temp": item.get("weather_temp"),
+                    "weather_wind_mph": item.get("weather_wind_mph"),
+                    "tags": [
+                        t.get("text")
+                        for t in (item.get("tags") or [])
+                        if isinstance(t, dict) and t.get("text")
+                    ],
                 }
             )
         return mapped
