@@ -9,6 +9,9 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    concurrency:
+      group: starlink-ingest
+      cancel-in-progress: false
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       SPACETRACK_USER: ${{ secrets.SPACETRACK_USER }}
@@ -26,6 +29,36 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
+
+      - name: Validate Required Secrets
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "Missing required secret: DATABASE_URL"
+            exit 1
+          fi
+          if [ -z "${SPACETRACK_USER}" ]; then
+            echo "Missing required secret: SPACETRACK_USER"
+            exit 1
+          fi
+          if [ -z "${SPACETRACK_PASS}" ]; then
+            echo "Missing required secret: SPACETRACK_PASS"
+            exit 1
+          fi
+
+      - name: Verify DB Connectivity And Schema
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg
+
+          db_url = os.environ["DATABASE_URL"]
+          with psycopg.connect(db_url) as conn:
+              with conn.cursor() as cur:
+                  cur.execute("SELECT 1")
+                  cur.execute(open("backend/Schema.sql", "r", encoding="utf-8").read())
+              conn.commit()
+          print("DB connectivity + schema check OK")
+          PY
 
       - name: Ingest Latest Starlink Data
         run: python backend/ingest.py
