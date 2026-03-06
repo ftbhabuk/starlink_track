@@ -17,6 +17,14 @@ export default function LaunchesBoard({ data, loading }) {
         <h2>Launches</h2>
         <span className="mono dim">Upcoming + Recent mission timeline</span>
       </div>
+      <div className="source-note warn launch-note">
+        <div className="mono launch-note-title">Operational Notes</div>
+        <ul className="launch-note-list">
+          <li>Private, classified, or defense payload details (for example Starshield/DoD missions) may be partially hidden.</li>
+          <li>Livestream links can be delayed, geo-restricted, or unavailable for some launches.</li>
+          <li>Launch windows are fluid and often revised in the final hours before T-0.</li>
+        </ul>
+      </div>
 
       <div className="infra-grid home-grid">
         <section className="infra-panel">

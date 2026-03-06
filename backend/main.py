@@ -537,10 +537,12 @@ def _fetch_spacex_launches_listing(limit: int = 10) -> list[dict]:
         return []
 
 
-def _fetch_rocketlaunchlive_upcoming(
-    limit: int = 5, vehicle_images: Optional[dict] = None
+def _fetch_rocketlaunchlive_launches(
+    list_type: Literal["next", "previous"],
+    limit: int = 5,
+    vehicle_images: Optional[dict] = None,
 ) -> list[dict]:
-    url = f"https://fdo.rocketlaunch.live/json/launches/next/{limit}"
+    url = f"https://fdo.rocketlaunch.live/json/launches/{list_type}/{limit}"
     vehicle_images = vehicle_images or {}
     try:
         resp = requests.get(url, timeout=20)
@@ -585,11 +587,11 @@ def _fetch_rocketlaunchlive_upcoming(
                     "date_utc": item.get("win_open")
                     or item.get("t0")
                     or item.get("sort_date"),
-                    "success": None,
+                    "success": item.get("result") == 1 if list_type == "previous" else None,
                     "rocket_name": rocket_name,
                     "site_url": source_url,
                     "site_summary": f"Pad: {pad.get('name') or 'Unknown'} · Site: {location or 'Unknown'}",
-                    "source": "rocketlaunch.live/launches/next",
+                    "source": f"rocketlaunch.live/launches/{list_type}",
                     "image_url": media_image or image_url,
                     "launch_description": item.get("launch_description"),
                     "mission_description": item.get("mission_description"),
@@ -607,6 +609,22 @@ def _fetch_rocketlaunchlive_upcoming(
         return mapped
     except requests.RequestException:
         return []
+
+
+def _fetch_rocketlaunchlive_upcoming(
+    limit: int = 5, vehicle_images: Optional[dict] = None
+) -> list[dict]:
+    return _fetch_rocketlaunchlive_launches(
+        list_type="next", limit=limit, vehicle_images=vehicle_images
+    )
+
+
+def _fetch_rocketlaunchlive_recent(
+    limit: int = 10, vehicle_images: Optional[dict] = None
+) -> list[dict]:
+    return _fetch_rocketlaunchlive_launches(
+        list_type="previous", limit=limit, vehicle_images=vehicle_images
+    )
 
 
 def _fetch_falcon9_vehicle_page_stats() -> Optional[dict]:
@@ -649,12 +667,12 @@ def _fetch_falcon9_vehicle_page_stats() -> Optional[dict]:
 
 def _fetch_spacex_rocket_stats():
     stats = _fetch_spacexnow_stats()
-    past = _parse_spacexnow_missions(
-        "https://spacexnow.com/past", limit=120, source_label="spacexnow/past"
-    )
     vehicle_images = _fetch_vehicle_images()
     upcoming_launches = _fetch_rocketlaunchlive_upcoming(
         limit=5, vehicle_images=vehicle_images
+    )
+    recent_launches = _fetch_rocketlaunchlive_recent(
+        limit=10, vehicle_images=vehicle_images
     )
 
     f9_completed = stats.get("falcon9_successful_missions")
@@ -662,31 +680,6 @@ def _fetch_spacex_rocket_stats():
     total_landings = stats.get("booster_landed_successes")
     landed_attempts = stats.get("booster_landed_attempts")
     total_reflights = stats.get("booster_reflights")
-
-    recent_launches = []
-    for mission in past[:10]:
-        rocket_line = (mission.get("rocket_line") or "").upper()
-        image_url = (
-            vehicle_images.get("falconheavy")
-            if "FH" in rocket_line or "FALCON HEAVY" in rocket_line
-            else vehicle_images.get("starship")
-            if "STARSHIP" in rocket_line
-            else vehicle_images.get("dragon")
-            if "DRAGON" in rocket_line
-            else vehicle_images.get("falcon9")
-        )
-        recent_launches.append(
-            {
-                "name": mission.get("name"),
-                "date_utc": None,
-                "success": None,
-                "rocket_name": mission.get("rocket_line"),
-                "site_url": mission.get("source_url"),
-                "site_summary": f"Landing: {mission.get('landing_site') or 'Unknown'} · Orbit: {mission.get('orbit') or 'Unknown'}",
-                "source": mission.get("source"),
-                "image_url": image_url,
-            }
-        )
 
     rockets = [
         {
@@ -731,7 +724,7 @@ def _fetch_spacex_rocket_stats():
         },
         "data_sources": {
             "launches_list": {
-                "source": "spacexnow.com/past",
+                "source": "rocketlaunch.live/json/launches/previous",
                 "fetched_at": datetime.now(timezone.utc).isoformat(),
             },
             "rockets_api": {
