@@ -170,8 +170,7 @@ app.get("/spacex/rockets/stats", async (c) => {
     return c.json(rocketsCache.data);
   }
 
-  const sql = neon(c.env.DATABASE_URL);
-  const data = await buildRocketStats(sql);
+  const data = await buildRocketStats();
   rocketsCache = { expiresAt: now + CACHE_TTL_MS, data };
   return c.json(data);
 });
@@ -379,51 +378,40 @@ app.onError((err, c) => {
 
 export default app;
 
-async function buildRocketStats(sql: ReturnType<typeof neon>): Promise<Dict> {
+async function buildRocketStats(): Promise<Dict> {
+  const stats = await fetchSpacexNowStats();
   const recent = await fetchRocketLaunchLive("previous", 12);
   const upcoming = await fetchRocketLaunchLive("next", 10);
-  const boosterAggRows = await sql<Dict[]>`
-    SELECT
-      COALESCE(SUM(flights), 0)::int AS total_core_flights,
-      COALESCE(SUM(landings_success), 0)::int AS booster_landings,
-      COALESCE(SUM(landings_attempts), 0)::int AS landing_attempts,
-      COALESCE(SUM(GREATEST(flights - 1, 0)), 0)::int AS reflights
-    FROM spacex_boosters
-  `;
 
-  const completedMissions = toInt(boosterAggRows[0]?.total_core_flights);
-  const boosterLandings = toInt(boosterAggRows[0]?.booster_landings);
-  const landingAttempts = toInt(boosterAggRows[0]?.landing_attempts);
-  const reflights = toInt(boosterAggRows[0]?.reflights);
-  const knownRecent = recent.filter((l) => l.success != null);
-  const successfulMissions = knownRecent.length
-    ? knownRecent.filter((l) => l.success === true).length
-    : 0;
-  const launchSuccessRate = knownRecent.length ? pct(successfulMissions, knownRecent.length) : null;
+  const f9Completed = stats.falcon9_successful_missions;
+  const f9Total = stats.falcon9_total_missions;
+  const boosterLandings = stats.booster_landed_successes;
+  const landingAttempts = stats.booster_landed_attempts;
+  const reflights = stats.booster_reflights;
 
   return {
     generated_at: new Date().toISOString(),
     overall: {
-      scope: "spacex-api",
-      total_launches: completedMissions,
-      successful_launches: successfulMissions,
-      launch_success_rate: launchSuccessRate,
+      scope: "spacexnow",
+      total_launches: f9Completed,
+      successful_launches: f9Completed,
+      launch_success_rate: pct(f9Completed || 0, f9Total || 0),
       booster_landings: boosterLandings,
       landing_rate: pct(boosterLandings, landingAttempts),
-      total_core_flights: completedMissions,
+      total_core_flights: f9Total,
       reused_core_flights: reflights,
-      reusability_rate: pct(reflights, completedMissions),
+      reusability_rate: pct(reflights || 0, f9Total || 0),
       upcoming_missions: upcoming.length,
     },
     falcon9: {
-      completed_missions: completedMissions,
-      total_missions: completedMissions,
+      completed_missions: f9Completed,
+      total_missions: f9Total,
       total_landings: boosterLandings,
       landing_attempts: landingAttempts,
       total_reflights: reflights,
       source: {
-        source_type: "neon+rocketlaunch.live",
-        source_url: `${ROCKETLAUNCH_LIVE_API}/previous/12`,
+        source_type: "spacexnow.com",
+        source_url: "https://spacexnow.com/stats",
       },
     },
     data_sources: {
@@ -432,7 +420,7 @@ async function buildRocketStats(sql: ReturnType<typeof neon>): Promise<Dict> {
         fetched_at: new Date().toISOString(),
       },
       rockets_api: {
-        source: "neon spacex_boosters/spacex_booster_missions + rocketlaunch.live",
+        source: "spacexnow.com/stats",
         latest_launch_date_utc: recent[0]?.date_utc || null,
         days_since_latest_launch: null,
         is_stale: false,
@@ -448,13 +436,13 @@ async function buildRocketStats(sql: ReturnType<typeof neon>): Promise<Dict> {
       {
         rocket_id: "falcon9",
         rocket_name: "Falcon 9",
-        mission_count: completedMissions,
-        successful_launches: successfulMissions,
+        mission_count: f9Total,
+        successful_launches: f9Completed,
         booster_landings: boosterLandings,
         reused_core_flights: reflights,
-        launch_success_rate: launchSuccessRate,
+        launch_success_rate: pct(f9Completed || 0, f9Total || 0),
         landing_rate: pct(boosterLandings, landingAttempts),
-        reusability_rate: pct(reflights, completedMissions),
+        reusability_rate: pct(reflights || 0, f9Total || 0),
         first_flight: null,
         recent_missions: recent.slice(0, 8).map((l) => ({ name: l.name, date_utc: l.date_utc })),
         image_url: VEHICLE_IMAGES.falcon9,
@@ -464,6 +452,92 @@ async function buildRocketStats(sql: ReturnType<typeof neon>): Promise<Dict> {
       ...VEHICLE_IMAGES,
     },
   };
+}
+
+async function fetchSpacexNowStats(): Promise<{
+  falcon9_successful_missions: number | null;
+  falcon9_total_missions: number | null;
+  booster_landed_successes: number | null;
+  booster_landed_attempts: number | null;
+  booster_reflights: number | null;
+}> {
+  const url = "https://spacexnow.com/stats";
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch SpaceXNow stats (${res.status})`);
+  }
+  const html = await res.text();
+  const lines = htmlToTextLines(html);
+  const text = lines.join(" ");
+
+  let [f9Success, f9Total] = parseMetricPair(
+    lines.find((line) => line.startsWith("Falcon 9 ")) || "",
+  );
+  let [landedSuccess, landedAttempts] = parseMetricPair(
+    lines.find((line) => line.startsWith("Landed ")) || "",
+  );
+  let reflownTotal = extractFirstInt(
+    lines.find((line) => line.startsWith("Reflown ")) || "",
+  );
+
+  if (f9Success == null) {
+    const m = text.match(/Falcon 9\s+([0-9,]+)\s*\/\s*([0-9,]+)/i);
+    if (m) {
+      f9Success = parseInt(m[1].replaceAll(",", ""), 10);
+      f9Total = parseInt(m[2].replaceAll(",", ""), 10);
+    }
+  }
+  if (landedSuccess == null) {
+    const m = text.match(/Landed\s+([0-9,]+)\s*\/\s*([0-9,]+)/i);
+    if (m) {
+      landedSuccess = parseInt(m[1].replaceAll(",", ""), 10);
+      landedAttempts = parseInt(m[2].replaceAll(",", ""), 10);
+    }
+  }
+  if (reflownTotal == null) {
+    const m = text.match(/Reflown\s+([0-9,]+)\s+booster reuses/i);
+    if (m) {
+      reflownTotal = parseInt(m[1].replaceAll(",", ""), 10);
+    }
+  }
+
+  return {
+    falcon9_successful_missions: f9Success,
+    falcon9_total_missions: f9Total,
+    booster_landed_successes: landedSuccess,
+    booster_landed_attempts: landedAttempts,
+    booster_reflights: reflownTotal,
+  };
+}
+
+function htmlToTextLines(html: string): string[] {
+  const noScript = html.replace(/<script[\s\S]*?<\/script>/gi, " ");
+  const noStyle = noScript.replace(/<style[\s\S]*?<\/style>/gi, " ");
+  const withBreaks = noStyle.replace(
+    /<\/(p|div|li|h1|h2|h3|h4|h5|h6|tr|td|section|article|br)>/gi,
+    "\n",
+  );
+  const text = withBreaks.replace(/<[^>]+>/g, " ");
+  const lines = text
+    .split("\n")
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+  return lines;
+}
+
+function parseMetricPair(value: string): [number | null, number | null] {
+  const m = value.match(/([0-9,]+)\s*\/\s*([0-9,]+)/);
+  if (!m) return [null, null];
+  return [
+    parseInt(m[1].replaceAll(",", ""), 10),
+    parseInt(m[2].replaceAll(",", ""), 10),
+  ];
+}
+
+function extractFirstInt(value: string): number | null {
+  const m = value.match(/([0-9,]+)/);
+  if (!m) return null;
+  return parseInt(m[1].replaceAll(",", ""), 10);
 }
 
 async function fetchRocketLaunchLive(kind: "next" | "previous", limit: number): Promise<LaunchItem[]> {
