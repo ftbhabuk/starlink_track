@@ -86,32 +86,6 @@ If you run scheduled refresh jobs in CI, provide:
 - `SPACETRACK_USER`
 - `SPACETRACK_PASS`
 
-## API Endpoints
-
-### Worker API (`worker/src/index.ts`)
-
-- `GET /`
-- `GET /stats`
-- `GET /satellites`
-- `GET /satellites/:noradId`
-- `GET /satellites/:noradId/history`
-- `GET /spacex/rockets/stats`
-- `GET /spacex/boosters/intel`
-
-### Backend API (`backend/main.py`)
-
-- `GET /`
-- `GET /satellites`
-- `GET /satellites/{norad_id}`
-- `GET /satellites/{norad_id}/history`
-- `GET /stats`
-- `GET /spacex/rockets/stats`
-- `GET /spacex/boosters/intel`
-- `GET /boosters`
-- `GET /boosters/{serial}`
-- `GET /capsules`
-- `GET /capsules/{serial}`
-
 ## Scraping / Data Middleware
 
 ### Starlink ingest (`backend/ingest.py`)
