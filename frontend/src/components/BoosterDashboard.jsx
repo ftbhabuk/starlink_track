@@ -12,6 +12,23 @@ function count(v) {
   return v == null ? "—" : v.toLocaleString();
 }
 
+function getBoosterStatusMeta(booster) {
+  const rawStatus = String(booster?.status || "").toLowerCase();
+  const isRetired = Boolean(booster?.is_retired);
+
+  if (isRetired || rawStatus === "retired") {
+    return { label: "retired", color: "#da3633" };
+  }
+  if (rawStatus === "active") {
+    return { label: "active", color: "#2ea043" };
+  }
+  if (rawStatus === "destroyed") {
+    return { label: "destroyed", color: "#da3633" };
+  }
+
+  return { label: rawStatus || "unknown", color: "#8f8f8f" };
+}
+
 export default function BoosterDashboard({ data, loading }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
@@ -121,23 +138,33 @@ export default function BoosterDashboard({ data, loading }) {
           </thead>
           <tbody>
             {filtered.map((b) => (
-              <tr key={b.core_id} className="sat-row" onClick={() => setSelected(b)}>
-                <td className="name-cell">
-                  <div className="booster-cell">
-                    {b.image_url && <img className="booster-thumb" src={b.image_url} alt={b.serial || "Booster"} loading="lazy" />}
-                    <div>
-                      <div>{b.display_name || b.serial || "Unknown"}</div>
-                      <div className="mono dim">{b.serial || "—"}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="mono dim">{b.status || "unknown"}</td>
-                <td className="mono">{b.mission_count}</td>
-                <td className="mono">{b.reuse_count ?? 0}</td>
-                <td className="mono">{(b.asds_landings || 0) + (b.rtls_landings || 0)}</td>
-                <td className="mono">{pct(b.landing_rate)}</td>
-                <td className="mono dim">{b.recent_missions?.[0]?.mission_name || "—"}</td>
-              </tr>
+              (() => {
+                const statusMeta = getBoosterStatusMeta(b);
+
+                return (
+                  <tr key={b.core_id} className="sat-row" onClick={() => setSelected(b)}>
+                    <td className="name-cell">
+                      <div className="booster-cell">
+                        {b.image_url && <img className="booster-thumb" src={b.image_url} alt={b.serial || "Booster"} loading="lazy" />}
+                        <div>
+                          <div>{b.display_name || b.serial || "Unknown"}</div>
+                          <div className="mono dim">{b.serial || "—"}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="status-badge" style={{ "--c": statusMeta.color }}>
+                        {statusMeta.label}
+                      </span>
+                    </td>
+                    <td className="mono">{b.mission_count}</td>
+                    <td className="mono">{b.reuse_count ?? 0}</td>
+                    <td className="mono">{(b.asds_landings || 0) + (b.rtls_landings || 0)}</td>
+                    <td className="mono">{pct(b.landing_rate)}</td>
+                    <td className="mono dim">{b.recent_missions?.[0]?.mission_name || "—"}</td>
+                  </tr>
+                );
+              })()
             ))}
           </tbody>
         </table>
@@ -174,20 +201,31 @@ export default function BoosterDashboard({ data, loading }) {
           <h3>Capsules</h3>
           <div className="infra-list">
             {(data.capsules || []).map((capsule) => (
-              <div key={capsule.capsule_id} className="infra-item">
-                <div className="booster-cell">
-                  {capsule.image_url && (
-                    <img className="booster-thumb" src={capsule.image_url} alt={capsule.capsule_id} loading="lazy" />
-                  )}
-                  <div>
-                    <div className="name-cell">{capsule.name || capsule.capsule_id}</div>
-                    <div className="mono dim">{capsule.capsule_id} · {capsule.status || "unknown"}</div>
+              (() => {
+                const statusMeta = getBoosterStatusMeta(capsule);
+
+                return (
+                  <div key={capsule.capsule_id} className="infra-item">
+                    <div className="booster-cell">
+                      {capsule.image_url && (
+                        <img className="booster-thumb" src={capsule.image_url} alt={capsule.capsule_id} loading="lazy" />
+                      )}
+                      <div>
+                        <div className="name-cell">{capsule.name || capsule.capsule_id}</div>
+                        <div className="mono dim">
+                          {capsule.capsule_id} ·{" "}
+                          <span className="status-badge" style={{ "--c": statusMeta.color }}>
+                            {statusMeta.label}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mono">
+                      Missions: {capsule.missions_reported ?? "—"} · Reuses: {capsule.reuses_reported ?? "—"}
+                    </div>
                   </div>
-                </div>
-                <div className="mono">
-                  Missions: {capsule.missions_reported ?? "—"} · Reuses: {capsule.reuses_reported ?? "—"}
-                </div>
-              </div>
+                );
+              })()
             ))}
           </div>
         </section>
@@ -202,6 +240,7 @@ export default function BoosterDashboard({ data, loading }) {
 
 function BoosterDetail({ booster, onClose }) {
   const landings = (booster.asds_landings || 0) + (booster.rtls_landings || 0);
+  const statusMeta = getBoosterStatusMeta(booster);
 
   return (
     <div className="detail-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -210,7 +249,11 @@ function BoosterDetail({ booster, onClose }) {
           <div>
             <div className="detail-title">Booster {booster.display_name || booster.serial || "Unknown"}</div>
             <div className="detail-subtitle">
-              Serial: {booster.serial || "—"} · Status: {booster.status || "unknown"} · {booster.is_retired ? "Retired" : "Operational/Tracked"}
+              Serial: {booster.serial || "—"} · Status:{" "}
+              <span className="status-badge" style={{ "--c": statusMeta.color }}>
+                {statusMeta.label}
+              </span>
+              {" "}· {booster.is_retired ? "Retired" : "Operational/Tracked"}
             </div>
           </div>
           <button className="close-btn" onClick={onClose}>✕</button>
