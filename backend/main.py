@@ -848,9 +848,14 @@ def _fetch_spacex_booster_intel():
             asds = reported_landings
             rtls = 0
             derived_landings = reported_landings
-        if (asds + rtls) > 0 and reported_attempts == 0:
-            reported_attempts = asds + rtls
-        landings = derived_landings if derived_landings > 0 else reported_landings
+        if reported_landings <= 0 and derived_landings > 0:
+            reported_landings = derived_landings
+        if reported_attempts <= 0 and derived_landings > 0:
+            reported_attempts = derived_landings
+
+        # Prefer source-reported totals; mission-level landing-site rows can be partial.
+        landings = reported_landings if reported_landings > 0 else derived_landings
+        landing_denominator = reported_attempts if reported_attempts > 0 else flights
 
         is_retired = row.get("status") in {"retired", "lost", "destroyed", "expended"}
 
@@ -880,20 +885,21 @@ def _fetch_spacex_booster_intel():
                 "type": row.get("booster_type") or row.get("vehicle") or "Falcon Booster",
                 "block": row.get("version"),
                 "reuse_count": max(flights - 1, 0),
-                "rtls_attempts": rtls if reported_attempts == 0 else 0,
+                "rtls_attempts": None,
                 "rtls_landings": rtls,
-                "asds_attempts": asds if reported_attempts == 0 else reported_attempts,
+                "asds_attempts": reported_attempts if reported_attempts > 0 else None,
                 "asds_landings": asds,
                 "last_update": row.get("updated_at").isoformat()
                 if row.get("updated_at")
                 else None,
                 "launch_count": flights,
                 "landing_success_count": landings,
+                "landing_attempt_count": reported_attempts if reported_attempts > 0 else None,
                 "mission_count": flights,
                 "missions_reused": max(flights - 1, 0),
                 "is_retired": is_retired,
-                "landing_rate": round((landings / flights * 100), 1)
-                if flights > 0
+                "landing_rate": round((landings / landing_denominator * 100), 1)
+                if landing_denominator and landing_denominator > 0
                 else None,
                 "recent_missions": recent_missions[:12],
                 "reuse_missions": reuse_missions[:12],
@@ -1039,9 +1045,7 @@ def _fetch_spacex_booster_intel():
     total_boosters = len(boosters)
     total_reused = sum(1 for b in boosters if (b.get("reuse_count") or 0) > 0)
     total_missions = sum(b["mission_count"] for b in boosters)
-    total_landings = sum(
-        (b.get("asds_landings") or 0) + (b.get("rtls_landings") or 0) for b in boosters
-    )
+    total_landings = sum(b.get("landing_success_count") or 0 for b in boosters)
     max_reuse = max((b.get("reuse_count", 0) for b in boosters), default=0)
     retired_boosters = sum(1 for b in boosters if b.get("is_retired"))
     active_boosters = total_boosters - retired_boosters

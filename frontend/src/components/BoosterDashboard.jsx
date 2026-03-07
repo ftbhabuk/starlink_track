@@ -12,6 +12,10 @@ function count(v) {
   return v == null ? "—" : v.toLocaleString();
 }
 
+function successfulLandings(booster) {
+  return booster?.landing_success_count ?? ((booster?.asds_landings || 0) + (booster?.rtls_landings || 0));
+}
+
 function getBoosterStatusMeta(booster) {
   const rawStatus = String(booster?.status || "").toLowerCase();
   const isRetired = Boolean(booster?.is_retired);
@@ -159,7 +163,7 @@ export default function BoosterDashboard({ data, loading }) {
                     </td>
                     <td className="mono">{b.mission_count}</td>
                     <td className="mono">{b.reuse_count ?? 0}</td>
-                    <td className="mono">{(b.asds_landings || 0) + (b.rtls_landings || 0)}</td>
+                    <td className="mono">{successfulLandings(b)}</td>
                     <td className="mono">{pct(b.landing_rate)}</td>
                     <td className="mono dim">{b.recent_missions?.[0]?.mission_name || "—"}</td>
                   </tr>
@@ -239,7 +243,7 @@ export default function BoosterDashboard({ data, loading }) {
 }
 
 function BoosterDetail({ booster, onClose }) {
-  const landings = (booster.asds_landings || 0) + (booster.rtls_landings || 0);
+  const landings = successfulLandings(booster);
   const statusMeta = getBoosterStatusMeta(booster);
 
   return (
