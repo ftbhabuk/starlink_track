@@ -26,7 +26,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
   background: rgba(8,12,18,0.95);
   backdrop-filter: blur(12px);
   position: sticky; top: 0; z-index: 100;
-  padding: 0 24px;
+  padding: 0;
 }
 .header::before {
   content: "";
@@ -37,9 +37,11 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
   pointer-events: none;
 }
 .header-inner {
-  max-width: 1400px; margin: 0 auto;
+  max-width: 1400px; margin: 0;
   display: flex; align-items: center; justify-content: space-between;
   height: 64px;
+  padding-right: 24px;
+}
   position: relative;
   z-index: 1;
 }
@@ -367,6 +369,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .starter-z-copy p {
   color: #c1c6cf;
   font-size: 14px;
+  display: inline-block;
 }
 .starter-z-metric {
   color: #e8edf6;
@@ -645,15 +648,15 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .app-footer {
   margin: 10px 24px 24px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 2px;
   background:
     radial-gradient(circle at 86% -30%, rgba(255,255,255,0.08), transparent 40%),
     linear-gradient(140deg, rgba(8,12,18,0.9), rgba(6,8,11,0.96));
+  padding: 16px 20px;
 }
 .app-footer-inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 20px 24px;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
