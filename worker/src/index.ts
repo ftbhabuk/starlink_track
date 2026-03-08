@@ -246,10 +246,17 @@ app.get("/spacex/boosters/intel", async (c) => {
 
     const reportedLandings = toInt(row.landings_success);
     const reportedAttempts = toInt(row.landings_attempts);
-    const derivedLandings = asds + rtls;
+    let derivedLandings = asds + rtls;
+
+    if (derivedLandings === 0 && reportedLandings > 0) {
+      asds = reportedLandings;
+      rtls = 0;
+      derivedLandings = reportedLandings;
+    }
 
     const landings = derivedLandings > 0 ? derivedLandings : reportedLandings;
-    const attempts = reportedAttempts > 0 ? reportedAttempts : Math.max(derivedLandings, flights);
+    let attempts = reportedAttempts > 0 ? reportedAttempts : derivedLandings;
+    if (attempts <= 0) attempts = flights;
 
     const recentMissions = missions.slice(0, 12).map((mission, idx) => ({
       mission_name: mission.mission_name || null,
