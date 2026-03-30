@@ -254,9 +254,8 @@ app.get("/spacex/boosters/intel", async (c) => {
       derivedLandings = reportedLandings;
     }
 
-    const landings = derivedLandings > 0 ? derivedLandings : reportedLandings;
-    let attempts = reportedAttempts > 0 ? reportedAttempts : derivedLandings;
-    if (attempts <= 0) attempts = flights;
+    const landings = reportedLandings > 0 ? reportedLandings : derivedLandings;
+    let attempts = reportedAttempts > 0 ? reportedAttempts : flights;
 
     const recentMissions = missions.slice(0, 12).map((mission, idx) => ({
       mission_name: mission.mission_name || null,
@@ -327,7 +326,7 @@ app.get("/spacex/boosters/intel", async (c) => {
   const retiredBoosters = boosters.filter((b) => b.is_retired).length;
   const totalMissions = boosters.reduce((sum, b) => sum + toInt(b.mission_count), 0);
   const totalLandings = boosters.reduce(
-    (sum, b) => sum + toInt(b.asds_landings) + toInt(b.rtls_landings),
+    (sum, b) => sum + toInt(b.landing_success_count),
     0,
   );
   const reusedAtLeastOnce = boosters.filter((b) => toInt(b.reuse_count) > 0).length;
