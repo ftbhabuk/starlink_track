@@ -621,6 +621,89 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
 .pagination button { background: var(--bg2); border: 1px solid var(--border); color: var(--text); padding: 6px 14px; border-radius: 3px; cursor: pointer; }
 .pagination button:disabled { opacity: 0.3; cursor: default; }
 
+/* Landing Pads & Droneship Components */
+.landing-pads-info,
+.droneship-info {
+  display: grid;
+  gap: 16px;
+}
+
+.info-section {
+  display: grid;
+  gap: 8px;
+}
+
+.info-section h4 {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.info-section p {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.media-content {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.info-image {
+  width: 100%;
+  height: auto;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+}
+
+.video-wrapper iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.data-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.data-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.01);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.data-item div:first-child {
+  color: var(--text);
+}
+
+.data-item .mono.dim {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+}
+
 /* === DETAIL PANEL === */
 .detail-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200;

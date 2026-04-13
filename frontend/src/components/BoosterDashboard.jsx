@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import LandingPads from "./landing-pads/LandingPads";
+import Droneship from "./landing-pads/Droneship";
 
 function pct(v) {
   return v == null ? "—" : `${v}%`;
@@ -195,66 +197,42 @@ export default function BoosterDashboard({ data, loading }) {
          )}
        </div>
 
-      <div className="infra-grid">
-        <section className="infra-panel">
-          <h3>Landing Pads</h3>
-          <div className="infra-list">
-            {(data.landpads || []).slice(0, 8).map((pad) => (
-              <div key={pad.landpad_id} className="infra-item">
-                <div className="name-cell">{pad.full_name || pad.name}</div>
-                <div className="mono dim">{pad.type} · {pad.region}</div>
-                <div className="mono">{pad.landing_successes}/{pad.landing_attempts} landings ({pct(pad.landing_success_rate)})</div>
-              </div>
-            ))}
-          </div>
-        </section>
+       <div className="infra-grid">
+         <LandingPads data={data} />
+         <Droneship data={data} />
+         <section className="infra-panel">
+           <h3>Capsules</h3>
+           <div className="infra-list">
+             {(data.capsules || []).map((capsule) => (
+               (() => {
+                 const statusMeta = getBoosterStatusMeta(capsule);
 
-        <section className="infra-panel">
-          <h3>Droneships (ASDS)</h3>
-          <div className="infra-list">
-            {(data.droneships || []).map((ship) => (
-              <div key={ship.ship_id} className="infra-item">
-                <div className="name-cell">{ship.name || "Unknown ship"}</div>
-                <div className="mono dim">{ship.home_port || "Unknown home port"}</div>
-                <div className="mono">{ship.active ? "Active" : "Inactive"} · {ship.year_built || "—"}</div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="infra-panel">
-          <h3>Capsules</h3>
-          <div className="infra-list">
-            {(data.capsules || []).map((capsule) => (
-              (() => {
-                const statusMeta = getBoosterStatusMeta(capsule);
-
-                return (
-                  <div key={capsule.capsule_id} className="infra-item">
-                    <div className="booster-cell">
-                      {capsule.image_url && (
-                        <img className="booster-thumb" src={capsule.image_url} alt={capsule.capsule_id} loading="lazy" />
-                      )}
-                      <div>
-                        <div className="name-cell">{capsule.name || capsule.capsule_id}</div>
-                        <div className="mono dim">
-                          {capsule.capsule_id} ·{" "}
-                          <span className="status-badge" style={{ "--c": statusMeta.color }}>
-                            {statusMeta.label}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mono">
-                      Missions: {capsule.missions_reported ?? "—"} · Reuses: {capsule.reuses_reported ?? "—"}
-                    </div>
-                  </div>
-                );
-              })()
-            ))}
-          </div>
-        </section>
-      </div>
+                 return (
+                   <div key={capsule.capsule_id} className="infra-item">
+                     <div className="booster-cell">
+                       {capsule.image_url && (
+                         <img className="booster-thumb" src={capsule.image_url} alt={capsule.capsule_id} loading="lazy" />
+                       )}
+                       <div>
+                         <div className="name-cell">{capsule.name || capsule.capsule_id}</div>
+                         <div className="mono dim">
+                           {capsule.capsule_id} ·{" "}
+                           <span className="status-badge" style={{ "--c": statusMeta.color }}>
+                             {statusMeta.label}
+                           </span>
+                         </div>
+                       </div>
+                     </div>
+                     <div className="mono">
+                       Missions: {capsule.missions_reported ?? "—"} · Reuses: {capsule.reuses_reported ?? "—"}
+                     </div>
+                   </div>
+                 );
+               })()
+             ))}
+           </div>
+         </section>
+       </div>
 
       {selected && (
         <BoosterDetail booster={selected} onClose={() => setSelected(null)} />
