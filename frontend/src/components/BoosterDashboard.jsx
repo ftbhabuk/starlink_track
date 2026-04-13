@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import LandingPads from "./landing-pads/LandingPads";
-import Droneship from "./landing-pads/Droneship";
+import LandingZoneTable from "./infrastructure/LandingZoneTable";
+import DroneShipTable from "./infrastructure/DroneShipTable";
+import Capsules from "./infrastructure/Capsules";
 
 function pct(v) {
   return v == null ? "—" : `${v}%`;
@@ -197,42 +198,11 @@ export default function BoosterDashboard({ data, loading }) {
          )}
        </div>
 
-       <div className="infra-grid">
-         <LandingPads data={data} />
-         <Droneship data={data} />
-         <section className="infra-panel">
-           <h3>Capsules</h3>
-           <div className="infra-list">
-             {(data.capsules || []).map((capsule) => (
-               (() => {
-                 const statusMeta = getBoosterStatusMeta(capsule);
-
-                 return (
-                   <div key={capsule.capsule_id} className="infra-item">
-                     <div className="booster-cell">
-                       {capsule.image_url && (
-                         <img className="booster-thumb" src={capsule.image_url} alt={capsule.capsule_id} loading="lazy" />
-                       )}
-                       <div>
-                         <div className="name-cell">{capsule.name || capsule.capsule_id}</div>
-                         <div className="mono dim">
-                           {capsule.capsule_id} ·{" "}
-                           <span className="status-badge" style={{ "--c": statusMeta.color }}>
-                             {statusMeta.label}
-                           </span>
-                         </div>
-                       </div>
-                     </div>
-                     <div className="mono">
-                       Missions: {capsule.missions_reported ?? "—"} · Reuses: {capsule.reuses_reported ?? "—"}
-                     </div>
-                   </div>
-                 );
-               })()
-             ))}
-           </div>
-         </section>
-       </div>
+        <div className="infra-section">
+          <LandingZoneTable data={data} />
+          <DroneShipTable data={data} />
+          <Capsules data={data} />
+        </div>
 
       {selected && (
         <BoosterDetail booster={selected} onClose={() => setSelected(null)} />
