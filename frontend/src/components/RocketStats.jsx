@@ -17,6 +17,7 @@ export default function RocketStats({ data, loading }) {
   const rocketsApi = data?.data_sources?.rockets_api;
   const rocketsStale = Boolean(rocketsApi?.is_stale);
   const falconImage = data?.vehicle_images?.falcon9;
+  const FALCON_9_HERO_IMAGE = "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/F9_and_Heavy_visu.png/1920px-F9_and_Heavy_visu.png";
 
   const cards = [
     { label: "Completed Missions (F9)", value: overall.total_launches?.toLocaleString() },
@@ -38,8 +39,22 @@ export default function RocketStats({ data, loading }) {
       </div>
       {falconImage && (
         <div className="hero-image-wrap">
-          <img className="hero-image" src={falconImage} alt="Falcon 9" loading="lazy" />
-        </div>
+        <img 
+          className="hero-image" 
+          src={FALCON_9_HERO_IMAGE} 
+          alt="Falcon 9" 
+          loading="lazy" 
+          align="center"
+          style={{
+            width: "100%",
+            height: "auto",           // important: let it keep natural height
+            objectFit: "contain",     // shows full image instead of cropping
+            maxHeight: "550px",       // adjust this number as needed (try 500-650px)
+            objectPosition: "center",  // keeps it centered
+            filter: "brightness(1.05) contrast(1.1)"
+          }}
+        />
+      </div>
       )}
 
       <div className="stats-bar">

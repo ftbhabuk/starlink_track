@@ -1,12 +1,65 @@
 # SpaceX Tracker SX
 
-Track Starlink satellites, SpaceX launches, Falcon boosters, and Dragon capsules from one dashboard.
-
+A multi-surface SpaceX dashboard for following Starlink satellites, Falcon booster reuse, Dragon capsules, launch activity, and recovery infrastructure from one place.
 
 https://github.com/user-attachments/assets/b16dcfcf-9b2b-4d32-a72c-1219decd4f1e
 
+## What This Project Is
 
-![Dashboard Preview](Screenshots/image.png)
+SpaceX Tracker SX is a personal tracking dashboard backed by a small data pipeline. It combines:
+
+- a React dashboard for browsing the data
+- a FastAPI backend for ingest jobs and local development
+- a Cloudflare Worker API for production delivery
+- a PostgreSQL schema shared across the whole system
+
+## What You Can Explore
+
+### Starlink
+
+- browse tracked Starlink satellites with search, filtering, sorting, and pagination
+- inspect per-satellite records with orbital history snapshots
+- view constellation-level stats such as active, decayed, and decaying objects
+
+### Falcon Boosters
+
+- compare boosters by missions, reuse count, landing record, and current status
+- open detailed booster views with reuse missions and landing profile
+- track fleet-level metrics such as total landings, reuse adoption, and max reuse depth
+
+### Launches
+
+- follow recent and upcoming missions from the same interface
+- inspect launch summaries, launch windows, tags, and mission links
+- keep booster and Starlink activity grounded in current launch cadence
+
+### Dragon And Ground Infrastructure
+
+- review Dragon capsule status and mission counts
+- track landing zones and autonomous drone ships alongside the booster fleet
+- keep recovery infrastructure in the same operational picture as the vehicles that depend on it
+
+## Why I Built It
+
+I like following SpaceX closely, but most sources only give part of the view. One place has launch schedules. Another has satellite data. Another has booster history. Useful on their own, but fragmented.
+
+It brings together:
+
+- Starlink satellite catalog and orbital history
+- Falcon launch and landing performance
+- booster-level reuse and mission history
+- Dragon capsule status
+- recovery infrastructure and current launch activity
+
+The goal was simple: build something that makes the overall state of the program easier to see at a glance.
+
+## Highlights
+
+- one dashboard for Starlink, launches, boosters, capsules, landing zones, and drone ships
+- local development API in Python and production API at the edge with Cloudflare Workers
+- Postgres-backed data model shared across frontend, backend, and worker
+- scheduled ingestion for both Starlink catalog data and SpaceX asset sync
+- focused on readable operational context, not just raw tables
 
 ## Architecture
 
