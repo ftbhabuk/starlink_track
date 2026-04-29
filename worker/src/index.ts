@@ -39,6 +39,7 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
 
 const VEHICLE_IMAGES = {
   falcon9: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/F9_and_Heavy_visu.png/1920px-F9_and_Heavy_visu.png",
+  falconheavy: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/F9_and_Heavy_visu.png/1920px-F9_and_Heavy_visu.png",
   dragon: "https://wallpaperaccess.com/full/1094574.jpg",
   starship: "https://wallpaperaccess.com/full/1094611.jpg",
   starlink: "https://images.hdqwalls.com/download/starlink-fe-2048x2048.jpg",
@@ -422,7 +423,7 @@ async function buildRocketStats(): Promise<Dict> {
     },
     data_sources: {
       launches_list: {
-        source: "fdo.rocketlaunch.live/json/launches/previous/12",
+        source: "rocketlaunch.live/launches/previous",
         fetched_at: new Date().toISOString(),
       },
       rockets_api: {
@@ -432,7 +433,7 @@ async function buildRocketStats(): Promise<Dict> {
         is_stale: false,
       },
       upcoming_launches: {
-        source: "fdo.rocketlaunch.live/json/launches/next/10",
+        source: "rocketlaunch.live/launches/next",
         fetched_at: new Date().toISOString(),
       },
     },
@@ -606,6 +607,14 @@ function normalizeRocketLaunchLiveItem(item: Dict, kind: "next" | "previous"): L
       (typeof item.launch_image === "string" && item.launch_image) ||
       (typeof item.quicktext === "string" && item.quicktext.startsWith("http") ? item.quicktext : null) ||
       null;
+  }
+  if (!imageUrl && vehicleName) {
+    const v = vehicleName.toLowerCase();
+    if (v.includes("falcon heavy")) imageUrl = VEHICLE_IMAGES.falconheavy;
+    else if (v.includes("falcon 9")) imageUrl = VEHICLE_IMAGES.falcon9;
+    else if (v.includes("dragon")) imageUrl = VEHICLE_IMAGES.dragon;
+    else if (v.includes("starship")) imageUrl = VEHICLE_IMAGES.starship;
+    else if (v.includes("starlink")) imageUrl = VEHICLE_IMAGES.starlink;
   }
 
   const siteUrl =
