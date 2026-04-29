@@ -566,11 +566,16 @@ function normalizeRocketLaunchLiveItem(item: Dict, kind: "next" | "previous"): L
         ? item.sort_name
         : "Unknown mission";
 
+  const providerName = typeof provider.name === "string" ? provider.name : null;
+  const vehicleName = typeof vehicle.name === "string" ? vehicle.name : null;
   const padName = typeof pad.name === "string" ? pad.name : null;
   const locationName = typeof location.name === "string" ? location.name : null;
-  const state = typeof location.statename === "string" ? location.statename : null;
-  const country = typeof location.country === "string" ? location.country : null;
-  const summaryParts = [padName, locationName, state, country].filter(Boolean);
+
+  const rocket_name = [providerName, vehicleName].filter(Boolean).join(" - ") || vehicleName || providerName || "Unknown rocket";
+
+  const site_summary = padName || locationName
+    ? `Pad: ${padName || "Unknown"} · Site: ${locationName || "Unknown"}`
+    : null;
 
   const launchDescription =
     (typeof item.launch_description === "string" && item.launch_description) ||
@@ -580,14 +585,28 @@ function normalizeRocketLaunchLiveItem(item: Dict, kind: "next" | "previous"): L
   const rawResult = typeof item.result === "number" ? item.result : null;
   const success = rawResult == null ? null : rawResult > 0;
 
-  const tags = [];
-  if (typeof provider.name === "string" && provider.name) tags.push(provider.name);
-  if (typeof vehicle.name === "string" && vehicle.name) tags.push(vehicle.name);
+  const rawTags = item.tags;
+  const tags = Array.isArray(rawTags)
+    ? rawTags.map((t) => asObj(t)).filter((t) => typeof t.text === "string" && t.text).map((t) => t.text)
+    : [];
 
-  const imageUrl =
-    (typeof item.launch_image === "string" && item.launch_image) ||
-    (typeof item.quicktext === "string" && item.quicktext.startsWith("http") ? item.quicktext : null) ||
-    null;
+  const mediaItems = item.media;
+  let imageUrl: string | null = null;
+  if (Array.isArray(mediaItems)) {
+    for (const media of mediaItems) {
+      const candidate = (typeof media.url === "string" && media.url) || (typeof media.source_url === "string" && media.source_url);
+      if (candidate) {
+        imageUrl = candidate;
+        break;
+      }
+    }
+  }
+  if (!imageUrl) {
+    imageUrl =
+      (typeof item.launch_image === "string" && item.launch_image) ||
+      (typeof item.quicktext === "string" && item.quicktext.startsWith("http") ? item.quicktext : null) ||
+      null;
+  }
 
   const siteUrl =
     (typeof item.quicktext === "string" && item.quicktext.startsWith("http") && item.quicktext) ||
@@ -597,12 +616,12 @@ function normalizeRocketLaunchLiveItem(item: Dict, kind: "next" | "previous"): L
     id: String(item.id || item.sort_date || item.t0 || launchName),
     name: launchName,
     date_utc: toIso(item.t0 || item.win_open || item.sort_date),
-    rocket_name: typeof vehicle.name === "string" ? vehicle.name : "Unknown rocket",
+    rocket_name,
     success,
     image_url: imageUrl,
-    site_summary: summaryParts.length > 0 ? summaryParts.join(" · ") : null,
+    site_summary,
     launch_description: launchDescription,
-    weather_summary: null,
+    weather_summary: typeof item.weather_summary === "string" ? item.weather_summary : null,
     tags,
     site_url: siteUrl,
     source: `${ROCKETLAUNCH_LIVE_API}/${kind}`,

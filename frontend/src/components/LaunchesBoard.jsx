@@ -57,7 +57,7 @@ export default function LaunchesBoard({ data, loading }) {
                   <div className="mono dim">Weather: {l.weather_summary}</div>
                 )}
                 {Array.isArray(l.tags) && l.tags.length > 0 && (
-                  <div className="mono dim">Tags: {l.tags.join(", ")}</div>
+                  <div className="mono dim" style={{ color: 'white' }}>{l.tags.join(", ")}</div>
                 )}
                 {l.site_url && (
                   <a className="home-link mono" href={l.site_url} target="_blank" rel="noreferrer">
