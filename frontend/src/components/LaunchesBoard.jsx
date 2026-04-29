@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 function dateOnly(v) {
   return v ? v.slice(0, 10) : "—";
 }
@@ -5,6 +7,29 @@ function dateOnly(v) {
 function handleImageFallback(event) {
   event.currentTarget.onerror = null;
   event.currentTarget.src = "/spacex-fallback.svg";
+}
+
+function TruncateText({ text, maxLength = 120 }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!text) return null;
+  
+  const shouldTruncate = text.length > maxLength;
+  const displayText = expanded || !shouldTruncate ? text : text.slice(0, maxLength) + "...";
+  
+  return (
+    <div className="home-summary launch-desc">
+      <span>{displayText}</span>
+      {shouldTruncate && (
+        <button 
+          className="show-more-btn" 
+          onClick={() => setExpanded(!expanded)}
+          style={{ background: 'none', border: 'none', color: '#8cb4ff', cursor: 'pointer', padding: '0 4px', fontSize: 'inherit' }}
+        >
+          {expanded ? " Show less" : " Show more"}
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function LaunchesBoard({ data, loading }) {
@@ -52,7 +77,7 @@ export default function LaunchesBoard({ data, loading }) {
                 <div className="name-cell">{l.name}</div>
                 <div className="mono dim">{dateOnly(l.date_utc)} · {l.rocket_name || "Unknown rocket"}</div>
                 {l.site_summary && <div className="home-summary">{l.site_summary}</div>}
-                {l.launch_description && <div className="home-summary launch-desc">{l.launch_description}</div>}
+                <TruncateText text={l.launch_description} />
                 {l.weather_summary && (
                   <div className="mono dim">Weather: {l.weather_summary}</div>
                 )}
@@ -64,7 +89,7 @@ export default function LaunchesBoard({ data, loading }) {
                   </div>
                 )}
                 {l.site_url && (
-                  <a className="home-link mono external-link" href={l.site_url} target="_blank" rel="noreferrer">
+                  <a className="home-link mono" href={l.site_url} target="_blank" rel="noreferrer">
                     Mission Details
                   </a>
                 )}
@@ -96,7 +121,7 @@ export default function LaunchesBoard({ data, loading }) {
                 </div>
                 {l.site_summary && <div className="home-summary">{l.site_summary}</div>}
                 {l.site_url && (
-                  <a className="home-link mono external-link" href={l.site_url} target="_blank" rel="noreferrer">
+                  <a className="home-link mono" href={l.site_url} target="_blank" rel="noreferrer">
                     Launch Page
                   </a>
                 )}
