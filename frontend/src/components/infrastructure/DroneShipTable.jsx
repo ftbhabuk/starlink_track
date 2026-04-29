@@ -1,53 +1,104 @@
 import React from "react";
 
 function DroneShipTable({ data }) {
+  // Static droneship data based on the requirements
   const droneShips = [
-    { id: "JRTI", name: "Just Read The Instructions (I)", homePort: "N/A", status: "scrapped" },
-    { id: "OCISLY", name: "Of Course I Still Love You", homePort: "Long Beach", status: "active" },
-    { id: "JRTI-II", name: "Just Read The Instructions (II)", homePort: "Port Canaveral", status: "active" },
-    { id: "ASOG", name: "A Shortfall of Gravitas", homePort: "Port Canaveral", status: "active" }
+    {
+      vessel: "Just Read The Instructions (I)",
+      homePort: "N/A",
+      status: "Scrapped"
+    },
+    {
+      vessel: "Of Course I Still Love You",
+      homePort: "Long Beach",
+      status: "Active"
+    },
+    {
+      vessel: "Just Read The Instructions (II)",
+      homePort: "Port Canaveral",
+      status: "Active"
+    },
+    {
+      vessel: "A Shortfall of Gravitas",
+      homePort: "Port Canaveral",
+      status: "Active"
+    }
   ];
 
   return (
     <section className="infra-panel">
-      <h3>Autonomous Droneships</h3>
-
-      <div className="droneship-intro">
-        <div className="intro-card">
-          <div className="intro-icon">⚓</div>
-          <div className="intro-content">
-            <h4>ASDS — Autonomous Spaceport Drone Ships</h4>
-            <p>Seagoing mobile landing platforms for Falcon boosters. Enable landings for missions without enough fuel to return to launch site.</p>
+      <h3>Autonomous Spaceport Drone Ships (ASDS)</h3>
+      
+      {/* Educational content about droneships */}
+      <div className="droneship-info">
+        <div className="info-section">
+          <h4>What are Autonomous Spaceport Drone Ships?</h4>
+          <p>
+            Autonomous Spaceport Drone Ships (ASDS) are seagoing vessels that serve as mobile landing 
+            platforms for SpaceX's Falcon 9 and Falcon Heavy boosters. These ships enable landings for 
+            missions that don't have enough fuel to return to the launch site, such as geostationary 
+            transfers or high-inclination orbits.
+          </p>
+        </div>
+        
+        <div className="info-section">
+          <h4>ASDS Fleet & Operations</h4>
+          <p>
+            SpaceX operates several droneships including "Just Read the Instructions" (JRTI) in 
+            California, "A Shortfall of Gravitas" (ASOG) and "Of Course I Still Love You" (OCISLY) in 
+            the Atlantic. These ships are equipped with thrusters to maintain position and capture 
+            landing boosters.
+          </p>
+          <div className="media-content">
+            <div className="video-wrapper">
+              <iframe 
+                width="100%" 
+                height="150" 
+                src="https://www.youtube.com/embed/sYmQQn_ZSys" 
+                title="Falcon 9 Landing on Droneship" 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowFullScreen
+              ></iframe>
+            </div>
           </div>
         </div>
-        <div className="media-content">
-          <iframe 
-            width="100%" 
-            height="160" 
-            src="https://www.youtube.com/embed/sYmQQn_ZSys" 
-            title="Falcon 9 Landing on Droneship" 
-            frameBorder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowFullScreen
-          />
-        </div>
       </div>
+      
+      {/* Droneship table */}
+      <div className="table-container">
+        <table className="droneship-table">
+          <thead>
+            <tr>
+              <th>Vessel</th>
+              <th>Home Port</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {droneShips.map((ship) => (
+              <tr key={ship.vessel}>
+                <td>{ship.vessel}</td>
+                <td>{ship.homePort}</td>
+                <td>
+                  <span 
+                    className={`status-badge ${ship.status.toLowerCase()}`}
+                    style={{ 
+                      "--c": ship.status.toLowerCase() === "active" ? "#2ea043" : 
+                             ship.status.toLowerCase() === "scrapped" ? "#da3633" : 
+                             "#8f8f8f"
+                    }}
+                  >
+                    {ship.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      
 
-      <div className="droneship-grid">
-        {droneShips.map((ship) => (
-          <div key={ship.id} className="droneship-card" data-active={ship.status === "active"}>
-            <div className="droneship-header">
-              <span className="droneship-id">{ship.id}</span>
-              <span className={`status-indicator ${ship.status}`} />
-            </div>
-            <div className="droneship-name">{ship.name}</div>
-            <div className="droneship-meta">
-              <span className="meta-label">Home Port</span>
-              <span className="meta-value">{ship.homePort}</span>
-            </div>
-          </div>
-        ))}
-      </div>
     </section>
   );
 }
