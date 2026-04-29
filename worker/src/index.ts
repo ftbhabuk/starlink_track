@@ -624,7 +624,7 @@ function normalizeRocketLaunchLiveItem(item: Dict, kind: "next" | "previous"): L
     weather_summary: typeof item.weather_summary === "string" ? item.weather_summary : null,
     tags,
     site_url: siteUrl,
-    source: `${ROCKETLAUNCH_LIVE_API}/${kind}`,
+    source: `rocketlaunch.live/launches/${kind}`,
   };
 }
 

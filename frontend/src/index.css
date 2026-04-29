@@ -996,6 +996,40 @@ body { background: var(--bg); color: var(--text); font-family: var(--font-body);
   border-radius: 3px;
   margin-bottom: 8px;
 }
+
+/* Tags - muted pill badges */
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.tag-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+/* Launch description */
+.launch-desc {
+  color: #a0a5b0;
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+.show-more-btn {
+  background: none;
+  border: none;
+  color: #8cb4ff;
+  cursor: pointer;
+  padding: 0 4px;
+  font-size: inherit;
+}
 .booster-cell {
   display: flex;
   align-items: center;
