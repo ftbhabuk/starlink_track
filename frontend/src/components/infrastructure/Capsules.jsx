@@ -5,87 +5,84 @@ function Capsules({ data }) {
     <section className="infra-panel">
       <h3>Dragon Capsules</h3>
       
-      {/* Educational content about capsules */}
       <div className="capsules-info">
-        <div className="info-section">
-          <h4>What are Dragon Capsules?</h4>
-          <p>
-            Dragon is a series of reusable spacecraft developed by SpaceX, designed to transport 
-            humans and cargo to orbiting destinations. The spacecraft consists of a pressurized 
-            capsule and an unpressurized trunk used for transporting cargo to and from orbit.
+        <div className="info-card">
+          <div className="info-card-header">
+            <span className="info-icon">∞</span>
+            <h4>SpaceX Dragon Spacecraft</h4>
+          </div>
+          <p className="info-lead">
+            Reusable spacecraft designed to transport humans and cargo to the International Space Station and other orbital destinations.
           </p>
+          <div className="info-grid">
+            <div className="info-col">
+              <h5>Dragon 1</h5>
+              <p>Original cargo variant (2010-2020). First private spacecraft to reach orbit and berth with the ISS.</p>
+            </div>
+            <div className="info-col">
+              <h5>Dragon 2</h5>
+              <p>Current generation in two configurations:</p>
+              <ul className="inline-list">
+                <li><span className="badge crew">Crew Dragon</span> — Astronaut transport</li>
+                <li><span className="badge cargo">Cargo Dragon</span> — Supply missions</li>
+              </ul>
+            </div>
+          </div>
         </div>
-        
-        <div className="info-section">
-          <h4>Dragon Variants</h4>
-          <p>
-            SpaceX operates two main variants of the Dragon spacecraft:<br/>
-            • <strong>Dragon 1</strong>: The original cargo version that flew missions to the 
-              International Space Station (ISS) from 2010-2020.<br/>
-            • <strong>Dragon 2</strong>: The current version in two configurations:<br/>
-              &nbsp;&nbsp;– <em>Crew Dragon</em>: Transports astronauts to and from the ISS<br/>
-              &nbsp;&nbsp;– <em>Cargo Dragon</em>: Transports supplies, equipment, and experiments
-          </p>
-        </div>
-        
-        <div className="info-section">
-          <h4>Reusability and Flight Heritage</h4>
-          <p>
-            Dragon capsules are designed for multiple flights, with heat shields, avionics, and 
-            other systems refurbished between missions. This reusability significantly reduces 
-            the cost of access to space. Each capsule receives a serial number and flight history 
-            tracking its missions and refurbishments.
-          </p>
+
+        <div className="info-card highlight">
+          <h4>Reusability</h4>
+          <p>Dragon capsules are designed for multiple flights. Heat shields, avionics, and systems are refurbished between missions, significantly reducing space access costs. Each capsule has a serial number tracking its flight history.</p>
         </div>
       </div>
-      
-      {/* Actual capsule data from API */}
-      <div className="info-section">
-        <h4>Active Capsule Fleet</h4>
-        <p>Current status of SpaceX Dragon capsules:</p>
-        <div className="data-list">
+
+      <div className="data-section">
+        <div className="data-header">
+          <h4>Active Capsule Fleet</h4>
+          <span className="data-count">{(data?.capsules || []).length} capsules</span>
+        </div>
+        <div className="capsule-grid">
           {(data?.capsules || []).slice(0, 6).map((capsule) => (
-            <div key={capsule.capsule_id} className="data-item">
-              <div className="capsule-info">
-                <div>{capsule.name || capsule.capsule_id}</div>
-                <div className="mono dim">
-                  {capsule.capsule_id} ·{" "}
-                  <span 
-                    className="status-badge" 
-                    style={{ 
-                      "--c": (capsule.status || "").toLowerCase() === "active" ? "#2ea043" : 
-                             (capsule.status || "").toLowerCase() === "retired" ? "#da3633" : 
-                             "#8f8f8f"
-                    }}
-                  >
-                    {(capsule.status || "").toUpperCase()}
-                  </span>
-                </div>
+            <div key={capsule.capsule_id} className="capsule-card">
+              <div className="capsule-header">
+                <span className="capsule-serial">{capsule.capsule_id}</span>
+                <span 
+                  className="status-pill"
+                  data-status={(capsule.status || "").toLowerCase()}
+                >
+                  {capsule.status || "unknown"}
+                </span>
               </div>
-              <div className="mono">
-                Missions: {capsule.missions_reported ?? "—"} · 
-                Reuses: {capsule.reuses_reported ?? "—"}
+              <div className="capsule-name">{capsule.name || capsule.capsule_id}</div>
+              <div className="capsule-stats">
+                <span><strong>{capsule.missions_reported ?? "—"}</strong> missions</span>
+                <span><strong>{capsule.reuses_reported ?? "—"}</strong> reuses</span>
               </div>
             </div>
           ))}
-          {(data?.capsules || []).length > 6 && (
-            <div className="data-item">
-              <div>And {(data.capsules || []).length - 6} more capsules...</div>
-            </div>
-          )}
         </div>
       </div>
-      
-      {/* Notable achievements */}
-      <div className="info-section">
-        <h4>Notable Achievements</h4>
-        <ul className="achievements-list">
-          <li>First private spacecraft to reach orbit (Dragon C101, 2010)</li>
-          <li>First private spacecraft to berth with the ISS (Dragon C101, 2012)</li>
-          <li>First reflight of an orbital spacecraft (Dragon C106, 2017)</li>
-          <li>First private spacecraft to transport humans to orbit (Crew Dragon Demo-2, 2020)</li>
-          <li>First splashdown of a commercial crew spacecraft (Crew Dragon Demo-2, 2020)</li>
-        </ul>
+
+      <div className="achievements-section">
+        <h4>Notable Firsts</h4>
+        <div className="achievements-timeline">
+          <div className="timeline-item">
+            <span className="timeline-year">2010</span>
+            <span>First private spacecraft to reach orbit</span>
+          </div>
+          <div className="timeline-item">
+            <span className="timeline-year">2012</span>
+            <span>First private spacecraft to berth with ISS</span>
+          </div>
+          <div className="timeline-item">
+            <span className="timeline-year">2017</span>
+            <span>First reflight of an orbital spacecraft</span>
+          </div>
+          <div className="timeline-item">
+            <span className="timeline-year">2020</span>
+            <span>First private spacecraft to transport humans</span>
+          </div>
+        </div>
       </div>
     </section>
   );
