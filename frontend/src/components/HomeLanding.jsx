@@ -121,11 +121,11 @@ export default function HomeLanding({
       {/* ── HERO ── */}
       <div className="hero hero-z reveal-up">
         <div className="hero-copy">
-          <p className="kicker">Mission Orientation</p>
+          {/* <p className="kicker">Mission Orientation</p> */}
           <h2>Get In Sync With The Current SpaceX Fleet State.</h2>
           <p className="hero-sub">
             Track Falcon booster performance and Starlink constellation health,
-            launch cadence, and mission outcomes — with Dragon and Starship context in the same view.
+            launch cadence, and mission outcomes — with Dragon and Starship context.
           </p>
 
           {nextLaunch && (

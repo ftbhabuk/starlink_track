@@ -124,7 +124,7 @@ export default function App() {
             <span className="logo-icon">SX</span>
             <div>
               <h1 className="logo-title">SPACEX TRACKER </h1>
-              <p className="tagline">Track  boosters, launches, Starlink, Dragon, and Starship context</p>
+              {/* <p className="tagline">Track  boosters, launches, Starlink, Dragon, and Starship context</p> */}
             </div>
           </button>
           <div className="header-meta">
@@ -266,14 +266,14 @@ export default function App() {
         <div className="app-footer-inner">
           <div>
             <div className="app-footer-title mono">NOTE:</div>
-            <p className="app-footer-copy">
+            <p className="app-footer-copy mono">
               Personal project built from public databases and open mission feeds.
-              Coverage is expanding and many features are still to be added.
+              {/* Coverage is expanding and many features are still to be added. */}
             </p>
           </div>
           <div className="app-footer-meta mono">
             <span>NOT AFFILATED WITH SPACEX</span>
-            <span>To be continued...</span>
+            {/* <span>To be continued...</span> */}
           </div>
         </div>
       </footer>
